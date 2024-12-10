@@ -2,12 +2,6 @@ import numpy as np
 import random as r
 import matplotlib.pyplot as plt
 
-def shuffle_list(list):
-    num_rows = len(list)
-    indices = np.random.permutation(num_rows)
-    list = list[indices]
-
-    return list
 
 
 
@@ -17,80 +11,10 @@ def shuffle_list(list):
 
 
 
-def findAction(lat, latdims, m=1, l=0):
-    S = 0
-
-    for n in range(Ntot):
-        dS = 0.5 * ( lat[shift(latdims,n,0,1)] - lat[n]) ** 2  + 0.5 * ( lat[shift(latdims,n,1,1)] - lat[n]) ** 2 + 0.5 * m**2 * lat[n]**2   + (l / 24) * lat[n]**4 
-        
-        S += dS
-    return S
-
-def actionChange(lat, latdims, address,d,  m=1, l=0):
-    #print("actionChange called. lat: ", lat, ", latdims: ", latdims, ", address: ", address, ",d: ",d)
-    dimension = len(latdims)
-
-    neighbours = getNeighbours(latdims,address)
-
-    
-
-    neighbSum = 0
-    for j in range(2*dimension):
-        n = int(neighbours[j])
-        neighbSum += lat[n]
-
-    dS = d*( 2*lat[address]*(2+ m*m/2) - neighbSum  ) \
-    + d*d*(2 + m*m/2 )
-
-
-    dSl =  d*np.power(lat[address],3)*l/6  \
-    + d*d*np.power(lat[address],2)*l/4 \
-    + d*d*d*(lat[address]*l/6) \
-    + d*d*d*d*(l/24)
-
-    return dS
-
-def expectation(lat,func=None):
-    # Assume the lattice is a 1D ring
-    M = 0
-    N = len(lat)
-    
-    # If func is None, use identity
-    if func is None:
-        func = lambda x: x
-
-
-    for i in range(N):
-        M += func(lat[i])
-
-    M = M/N
-    return M
 
 
 
 
-
-def twoPointCorr(lat1, lat2=None):
-   
-    C = 0
-
-    Ntot = len(lat1)
-
-    # If ring2 is None, use ring1 for both
-    if lat2 is None:
-        lat2 = np.copy(lat1)
-    
-    CArray = np.zeros(Ntot*Ntot)
-    number = 0
-
-    for n1 in range(Ntot):
-        for n2 in range(Ntot):
-            CArray[number] = lat1[n1]*lat2[n2]
-            number += 1
-
-    C = np.mean(CArray)
-    CError = np.std(CArray)/Ntot
-    return C, CError
 
 
 
@@ -102,237 +26,308 @@ def getCoords(n, sideLength):
     return row,col
 
 
-def metropolisUpdate(lat,latdims,n,dMax):
 
 
-    sideLength = lat.shape[0]
+
+
+
+
+
+
+
+
+
+
+##############################################################
+##############################################################
+
+
+class Lattice:
+    def __init__(self, latdims, initConfig=None,m=1,l=0):
+        self.latdims = np.array(latdims)
+        self.Ntot = np.product(self.latdims)
+        self.dim = len(self.latdims)
+        self.lat = np.zeros(self.Ntot) if initConfig is None else np.array(initConfig)
+        self.addressList = np.arange(self.Ntot)
+        self.dMax = 1
+
+        self.m = m
+        self.l = l
+
+
+        self.vec = np.ones(self.dim + 1)*self.Ntot
+
+        for v in range(self.dim):
+            self.vec[v+1] = self.vec[v]/latdims[v]
     
-    d=r.uniform(-dMax,dMax)
+    def scrambleLattice(self):
+        for n in range(self.Ntot):
+            self.lat[n] = r.uniform(0,1)
+
+    def show(self):
+        showLat = np.reshape(self.lat,self.latdims)
+        print(showLat)
     
-
-    #print("lat length: ", len(lat))
-    dS = actionChange(lat,latdims,n,d)
-
-
-
-    p = min(1,np.exp(-dS))
-
-    roll = r.uniform(0,1)
-
-    if roll <= p:
-        lat[n] = lat[n] + d
-    return lat
-
-
-def warmLattice(lat,latdims,g0,readout = False, returnArray = False, flip = False):
-    dMax = 1
-    dMaxes = np.zeros(g0)
-    Ntot = len(lat)
-
-    for i in range(g0):
-        list = shuffle_list(addressList)
-        for j in range(Ntot):
-
-            n = list[j]
-                   
-            lat2 = np.copy(lat)
-    
-            d=r.uniform(-dMax,dMax)
-
-    
-            lat2[n] = lat[n] + d
-
-            dS = findAction(lat2,latdims) - findAction(lat,latdims)
-
-
-
-            p = min(1,np.exp(-dS))
-            roll = r.uniform(0,1)
-
-            # Adjust dMax to try and achieve a probability of about 80%
-            if p < 0.78:
-                dMax = dMax*0.95
-            elif p > 0.82:
-                dMax = dMax*1.05
-
-            flip = False
-            if flip:
-
-                if roll <= p:
-                    lat[n] = lat[n] + d
-                
-        if readout:
-
-            print("Run  ", i, "/",g0,": dMax = ",dMax, "d = ", d, "p = ",p, "dS = ", dS)
-
-        dMaxes[i]=dMax
-
-    if returnArray:
-        return dMaxes
-    else:
-        return dMax
-
-
-
-
-
-
-def getNeighbours(latdims,site):
-    D = len(latdims)
-    Ntot = np.product(latdims)
-    vec = np.ones(D+1)*Ntot
-
-    for v in range(D):
-        vec[v+1] = vec[v]/latdims[v]
-
-    neighbs = np.zeros(2*D)
-    for i in range(2*D):
-        d = int(np.ceil((i+1)/2))-1
-
-        neighbSite = vec[d]* (site //vec[d]) + (site + ((-1)**i) * vec[d+1] + Ntot) % (vec[d])
-        neighbs[i] = int(neighbSite)
-        #print("d is ", d, ", neighbour is ",neighbSite)
-    return neighbs
-
-def shift(latdims,site,dim,s):
-    D = len(latdims)
-    Ntot = np.product(latdims)
-    vec = np.ones(D+1)*Ntot
-
-    for v in range(D):
-        vec[v+1] = vec[v]/latdims[v]
-
-
-
-
-    d = dim
-
-    neighbSite = int(vec[d]* (site //vec[d]) + (site + s * vec[d+1] + Ntot) % (vec[d]))
-
-    return neighbSite
-
-##############################################################
-##############################################################
-##############################################################
-##############################################################
-##############################################################
-##############################################################
-
-
-latdims = np.array((10,10)) # convention is t,x,y,z
-
-Ntot = np.product(latdims)
-lat = np.zeros(Ntot)
-
-
-
-
-# Number of warming sweeps
-g0 = 10
-
-sweeps = 2000
-
-# Create address list to permute each sweep
-addressList = np.zeros(Ntot,dtype=int)
-for i in range(Ntot):
-    addressList[i] = i
-
-# Initialise lattice
-
-lat0 = np.random.uniform(low=-1, high=1, size=Ntot)
-
-
-
-# Initialise lattice through computer time
-
-
-latm = np.zeros((sweeps,Ntot))
-latm[0,:] = lat0
-
-
-
-
-
-# Find a good value for dMax
-dMax = warmLattice(lat,latdims,g0)
-
-print("dmax is", dMax)
-
-
-corrArray = np.zeros(int(sweeps/10))
-corrErrorArray = np.zeros(int(sweeps/10))
-number = 0
-
-
-
-
-for j in range(Ntot):
-    # Dealing with each site in a random order
-    n = addressList[j]
-    lat0 = metropolisUpdate(lat0,latdims,n,dMax)
-
-
-#print(lat0)
-
-for i in range(sweeps):
-    list = shuffle_list(addressList)
-    lat = latm[i,:] # Work with that slice 
-
-    for j in range(Ntot):
-        # Dealing with each site in a random order
-
-        n = addressList[j]
-
-        lat = metropolisUpdate(lat,latdims,n,dMax)
-    
-    if (i%10) == 0:
-
-        correlator, corrError = twoPointCorr(lat)
-        corrArray[number] = correlator
-        corrErrorArray[number] = corrError
-        number+=1
-
-
-    if i != sweeps-1:
-
-        latm[i+1,:] = lat # Save that configuration to the matrix
+    def shuffleList(self):
         
-    print("Done sweep ", i+1,"/",sweeps)
+        indices = np.random.permutation(self.Ntot)
+        self.addressList = self.addressList[indices]
+    
+    def expectation(self,func=None):
+        
+        # If func is None, use identity
+        if func is None:
+            func = lambda x: x
+
+
+        for n in range(self.Ntot):
+            M += func(self.lat[n])
+
+        M = M/self.Ntot
+        return M
+
+    def shift(self,site,dim,jump):
+        shiftedSite = int(self.vec[dim]* (site //self.vec[dim]) + (site + jump * self.vec[dim+1] + self.Ntot) % (self.vec[dim]))
+        return shiftedSite
+
+    def getNeighbours(self,site):
+        neighbs = np.zeros(2*self.dim)
+        for i in range(2*self.dim):
+            d = int(np.ceil((i+1)/2))-1
+
+            jump = (-1)**i
+            neighbs[i] = self.shift(site,d,jump)
+        return neighbs
+
+
+
+    def findAction(self):
+        S = 0
+        dS = 0
+        
+        for n in range(self.Ntot):
+            dS = 0
+            neighbTotal = 0
+            for d in range(self.dim):
+                neighbTotal += self.lat[self.shift(n,d,1)]
+            
+            dS += (self.dim+(self.m**2)/2)*self.lat[n]**2 - self.lat[n]*neighbTotal + (self.l / 24) * self.lat[n]**4 
+            
+            S += dS
+        return S
+
+
+    def actionChange(self, address,d):
+
+
+        neighbours = self.getNeighbours(address)
+
+        
+
+        neighbSum = 0
+        for j in range(2*self.dim):
+            n = int(neighbours[j])
+            neighbSum += self.lat[n]
+
+        dS = d*( 2*self.lat[address]*(2+ self.m*self.m/2) - neighbSum  ) \
+        + d*d*(2 + self.m*self.m/2 )
+
+
+        dSl = self.l*( \
+        + d*np.power(self.lat[address],3)/6  \
+        + d*d*np.power(self.lat[address],2)/4 \
+        + d*d*d*self.lat[address]/6 \
+        + d*d*d*d/24 )
+
+        return dS+dSl
+
+    def warmLattice(self,g0,readout = False, flip = False):
+
+
+        for i in range(g0):
+
+            self.shuffleList()
+            for j in range(self.Ntot):
+
+                n = self.addressList[j]
+                
+                d=r.uniform(-self.dMax,self.dMax)
+
+        
+                dS = self.actionChange(n,d)
+
+
+
+                p = min(1,np.exp(-dS))
+                roll = r.uniform(0,1)
+
+                # Adjust dMax to try and achieve a probability of about 80%
+                if p < 0.78:
+                    self.dMax *= 0.95
+                elif p > 0.82:
+                    self.dMax *= 1.05
+
+                if flip:
+
+                    if roll <= p:
+                        self.lat[n] = self.lat[n] + d
+                    
+            if readout:
+
+                print("Run  ", i, "/",g0,": dMax = ",self.dMax, "d = ", d, "p = ",p, "dS = ", dS)
+
+
+    def metropolisUpdate(self,n):
+
+        
+        d=r.uniform(-self.dMax,self.dMax)
+        
+
+        dS = self.actionChange(n,d)
+
+
+
+        p = min(1,np.exp(-dS))
+
+        roll = r.uniform(0,1)
+
+        if roll <= p:
+            self.lat[n] += + d
+    
+    def metropolisCycles(self,n,cycles=10):
+
+        for c in range(cycles):
+            self.shuffleList()
+
+
+            for i in range(self.Ntot):
+                n = self.addressList[i]
+                self.metropolisUpdate(n)
+
+    def twoPointCorr(self):
+    
+        C = 0
+
+
+        
+        CArray = np.zeros(self.Ntot**2)
+        number = 0
+
+        for n1 in range(self.Ntot):
+            for n2 in range(self.Ntot):
+                CArray[number] = self.lat[n1]*self.lat[n2]
+                number += 1
+
+        C = np.mean(CArray)
+        CError = np.std(CArray)/(self.Ntot-1)
+        return C, CError
+    
+    def twoPointTimeCorr(self, configNumber):
+
+        timesteps, spacesteps = self.latdims
+        
+        GCMatrix = np.zeros((timesteps+1,configNumber))
+
+        for i in range(configNumber):
+            self.metropolisCycles(20)
+            
+            for tau2 in range(timesteps+1):
+                tau = tau2 % timesteps
+                corr = 0.0
+                
+                for t2 in range(timesteps+1):
+                    t = t2%timesteps
+                    for x in range(spacesteps):
+                        for y in range(spacesteps):
+                            n1 = t * spacesteps + x
+                            n2 = ((t + tau) % timesteps) * spacesteps + y
+                            corr += self.lat[n1] * self.lat[n2]
+                
+
+                corr /= (spacesteps * spacesteps * timesteps)
+                GCMatrix[tau2,i] += corr
+
+            print("Done config ",i, "/",configNumber)
+
+        # Average over configurations
+        GCArray = np.mean(GCMatrix, axis=1)
+        GCErrors = np.std(GCMatrix, axis=1)/np.sqrt(configNumber-1)
+
+        return GCArray, GCErrors
+
+            
+
+T = 10
+L = 10
+
+latdims2 = np.array((T,L))
+lat2 = Lattice(latdims2)
+
+
+lat2.scrambleLattice()
+lat2.metropolisCycles(10)
+print("Lattice warmed")
+
+
+GCArray2, GCErrors2 = lat2.twoPointTimeCorr(1000)
+xAxis = np.arange(latdims2[0]+1)
+C, CError = lat2.twoPointCorr()
+print(xAxis)
+print(GCArray2)
+
+plt.errorbar(xAxis,GCArray2,GCErrors2,label="Monte Carlo")
+plt.title("Correlation function for 10x10 euclidean lattice between phi(x,0) and phi(y,tau)")
+plt.xlabel("Tau")
 
 
 
 
 
-print(corrArray)
-
-averageCorrArray = np.mean(corrArray)
-print("Simple correlator mean: ", averageCorrArray)
-
-standardDeviation = np.std(corrArray)
-#print(standardDeviation)
-errorOnMean = standardDeviation/np.sqrt(len(corrArray))
-print("Error on mean: ", errorOnMean)
+# Analytic calculation
 
 
 
+m = 1
 
-# Weighted Mean 
 
-corrNumber = len(corrErrorArray)
 
-denominator =0
-numerator = 0
-for i in range(corrNumber):
-    ddenom = 1/((corrErrorArray[i])**2)
-    denominator += ddenom
+def denominator(nx,nt):
+    return 4*np.sin(np.pi*nx/L)**2 + 4*np.sin(np.pi*nt/T)**2 + m**2
 
-    dnumer = corrArray[i]*ddenom
-    numerator += dnumer
+def real_numerator(x1,x2,nx,t1,t2,nt):
+    return np.cos(2*np.pi*nx*(x2-x1)/L + 2*np.pi*nt*(t2-t1)/T)
 
-weightedCorrMean = numerator/denominator
-print("Weighted Correlator Mean: ",weightedCorrMean)
 
-# Uncertainty on weighted mean
+def imag_numerator(x1,x2,nx,t1,t2,nt):
+    return np.sin(2*np.pi*nx*(x2-x1)/L + 2*np.pi*nt*(t2-t1)/T)
 
-wMeanError = np.sqrt(1/denominator)
-print("Error on weighted mean: ", wMeanError)
+def anCorr(x1,x2,t1,t2):
+    result = 0
+    for nx in range(L):
+        for nt in range(T):
+            result += real_numerator(x1,x2,nx,t1,t2,nt)/denominator(nx,nt)
+    return result/(L*T)
+
+
+
+results = np.zeros(T+1)
+
+for tau in range(T+1):
+
+    for x in range(L):
+        for y in range(L):
+            for t in range(T):
+                results[tau] += anCorr(x,y,t,t+tau)
+
+results /= (L*L*T)
+
+print(results)
+
+plt.plot(results,linestyle="dashed",label="Analytical")
+
+plt.legend()
+
+plt.show()
+
+
+
