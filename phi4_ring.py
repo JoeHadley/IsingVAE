@@ -1,56 +1,15 @@
 import numpy as np
 import random as r
-import matplotlib.pyplot as plt
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-def getCoords(n, sideLength):
-    row = int(n//sideLength)
-    col = int(n%sideLength)
-    return row,col
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-##############################################################
-##############################################################
-
 
 class Lattice:
-    def __init__(self, latdims, initConfig=None,m=1,l=0):
+    def __init__(self, latdims, initConfig=None,m=1,l=0,gauss = True, dMax0 = 1):
         self.latdims = np.array(latdims)
-        self.Ntot = np.product(self.latdims)
+        self.Ntot = np.prod(self.latdims)
         self.dim = len(self.latdims)
         self.lat = np.zeros(self.Ntot) if initConfig is None else np.array(initConfig)
         self.addressList = np.arange(self.Ntot)
-        self.dMax = 1
-
+        self.dMax = dMax0
+        self.gauss = gauss
         self.m = m
         self.l = l
 
@@ -62,7 +21,10 @@ class Lattice:
     
     def scrambleLattice(self):
         for n in range(self.Ntot):
-            self.lat[n] = r.uniform(0,1)
+            if self.gauss:
+                self.lat[n] = r.gauss(0,1)
+            else:
+                self.lat[n] = r.uniform(-1,1)
 
     def show(self):
         showLat = np.reshape(self.lat,self.latdims)
@@ -111,7 +73,7 @@ class Lattice:
             for d in range(self.dim):
                 neighbTotal += self.lat[self.shift(n,d,1)]
             
-            dS += (self.dim+(self.m**2)/2)*self.lat[n]**2 - self.lat[n]*neighbTotal + (self.l / 24) * self.lat[n]**4 
+            dS += (self.dim + (self.m**2)/2)*self.lat[n]**2 - self.lat[n]*neighbTotal + (self.l / 24) * self.lat[n]**4 
             
             S += dS
         return S
@@ -142,7 +104,9 @@ class Lattice:
         return dS+dSl
 
     def warmLattice(self,g0,readout = False, flip = False):
+        if readout:
 
+            actionArray = np.zeros(g0)
 
         for i in range(g0):
 
@@ -151,7 +115,10 @@ class Lattice:
 
                 n = self.addressList[j]
                 
-                d=r.uniform(-self.dMax,self.dMax)
+                if self.gauss:
+                    d = r.gauss(0,self.dMax)
+                else:
+                    d=r.uniform(-self.dMax,self.dMax)
 
         
                 dS = self.actionChange(n,d)
@@ -163,9 +130,9 @@ class Lattice:
 
                 # Adjust dMax to try and achieve a probability of about 80%
                 if p < 0.78:
-                    self.dMax *= 0.95
+                    self.dMax *= 0.99
                 elif p > 0.82:
-                    self.dMax *= 1.05
+                    self.dMax *= 1.01
 
                 if flip:
 
@@ -173,14 +140,19 @@ class Lattice:
                         self.lat[n] = self.lat[n] + d
                     
             if readout:
-
-                print("Run  ", i, "/",g0,": dMax = ",self.dMax, "d = ", d, "p = ",p, "dS = ", dS)
+                S = self.findAction()
+                print("Run  ", i, "/",g0,": dMax = ",self.dMax, "d = ", d, "p = ",p, "dS = ", dS, "S = ",S)
+                actionArray[i] = S
+        if readout:
+            return actionArray
 
 
     def metropolisUpdate(self,n):
 
-        
-        d=r.uniform(-self.dMax,self.dMax)
+        if self.gauss:
+            d = r.gauss(0,self.dMax)
+        else:
+            d=r.uniform(-self.dMax,self.dMax)
         
 
         dS = self.actionChange(n,d)
@@ -192,9 +164,14 @@ class Lattice:
         roll = r.uniform(0,1)
 
         if roll <= p:
-            self.lat[n] += + d
+            self.lat[n] += d
     
-    def metropolisCycles(self,n,cycles=10):
+    def metropolisCycles(self,cycles,readout = False):
+
+        if readout:
+            actionArray = np.zeros(cycles)
+
+        
 
         for c in range(cycles):
             self.shuffleList()
@@ -203,6 +180,15 @@ class Lattice:
             for i in range(self.Ntot):
                 n = self.addressList[i]
                 self.metropolisUpdate(n)
+        
+        
+            if readout:
+                S = self.findAction()
+                print("Run  ", c, "/",cycles)
+                actionArray[c] = S
+
+        if readout:
+            return actionArray
 
     def twoPointCorr(self):
     
@@ -222,14 +208,14 @@ class Lattice:
         CError = np.std(CArray)/(self.Ntot-1)
         return C, CError
     
-    def twoPointTimeCorr(self, configNumber):
+    def twoPointTimeCorr(self, configNumber, interconfigCycles):
 
         timesteps, spacesteps = self.latdims
         
         GCMatrix = np.zeros((timesteps+1,configNumber))
 
         for i in range(configNumber):
-            self.metropolisCycles(20)
+            self.metropolisCycles(interconfigCycles)
             
             for tau2 in range(timesteps+1):
                 tau = tau2 % timesteps
@@ -254,6 +240,7 @@ class Lattice:
         GCErrors = np.std(GCMatrix, axis=1)/np.sqrt(configNumber-1)
 
         return GCArray, GCErrors
+
 
             
 
@@ -330,4 +317,122 @@ plt.legend()
 plt.show()
 
 
+
+
+
+
+
+
+def getCoords(n, sideLength):
+    row = int(n//sideLength)
+    col = int(n%sideLength)
+    return row,col
+
+
+
+
+
+def denominator(nx,nt):
+    return 4*np.sin(np.pi*nx/L)**2 + 4*np.sin(np.pi*nt/T)**2 + m**2
+
+def real_numerator(x1,x2,nx,t1,t2,nt):
+    return np.cos(2*np.pi*nx*(x2-x1)/L + 2*np.pi*nt*(t2-t1)/T)
+
+
+def imag_numerator(x1,x2,nx,t1,t2,nt):
+    return np.sin(2*np.pi*nx*(x2-x1)/L + 2*np.pi*nt*(t2-t1)/T)
+
+def anCorr(x1,x2,t1,t2):
+    result = 0
+    for nx in range(L):
+        for nt in range(T):
+            result += real_numerator(x1,x2,nx,t1,t2,nt)/denominator(nx,nt)
+    return result/(L*T)
+
+
+
+
+
+
+
+
+##############################################################
+##############################################################
+
+
+
+
+pregameWarmCycles = 10000
+correlatorConfigs = 200
+interconfigCycles = 200
+gauss = True
+
+T = 5
+L = 5
+
+latdims2 = np.array((T,L))
+lat2 = Lattice(latdims2,gauss = True,dMax0=0.1)
+
+
+
+lat2.scrambleLattice()
+lat2.metropolisCycles(pregameWarmCycles)
+print("Lattice warmed")
+
+
+GCArray2, GCErrors2 = lat2.twoPointTimeCorr(correlatorConfigs,interconfigCycles)
+constant = GCArray2[0]
+
+
+
+
+
+
+
+
+
+# Analytic calculation
+
+m = 1
+
+results = np.zeros(T+1)
+
+for tau in range(T+1):
+
+    for x in range(L):
+        for y in range(L):
+            for t in range(T):
+                results[tau] += anCorr(x,y,t,(t+tau)%T)
+
+results /= (L*L*T)
+
+
+#results /= results[0]
+print(results)
+
+
+
+
+
+xAxis = np.arange(latdims2[0]+1)
+C, CError = lat2.twoPointCorr()
+#print(xAxis)
+#print(GCArray2/GCArray2[0])
+
+plt.errorbar(xAxis,GCArray2,GCErrors2,label="Monte Carlo")
+plt.title(f"Correlation function for {T}x{L} euclidean lattice between phi(x,0) and phi(y,tau)")
+plt.xlabel("Tau")
+
+
+
+
+
+plt.plot(results,linestyle="dashed",label="Analytical")
+
+
+plt.legend()
+
+plt.show()
+
+print("Plotted")
 
