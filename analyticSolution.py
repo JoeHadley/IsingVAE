@@ -56,7 +56,6 @@ def getAnalyticCorrelator(lattice):
 
 
 
-        
         np.savetxt(filePath, compResults)
 
     return compResults
