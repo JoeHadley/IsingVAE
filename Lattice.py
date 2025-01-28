@@ -2,7 +2,9 @@ import numpy as np
 import random as r
 import matplotlib.pyplot as plt
 import time
-
+import struct
+import base64
+import os
 class Lattice:
     def __init__(self, latdims, initConfig=None,m=1,l=0, dMax0 = 1,warmCycles = None, historyLimit = int(1e6), observableFuncName = None, recordWhileWarming = False,shuffle = False):
         self.latdims = latdims
@@ -375,3 +377,42 @@ class Lattice:
         return GCArray, GCErrors
     
 
+    def writeConfig(self,filename = "output.bin"):
+        #data = self.lat
+        #data.tofile(filename)
+        
+        #with open(filename, mode) as file:
+        #    file.write(",".join(map(str, self.lat)) + "\n")  # Write as a single line
+
+        binary_data = self.lat.tobytes()
+        encoded_data = base64.b64encode(binary_data).decode("utf-8")
+        
+        mode = "a" if os.path.exists(filename) else "w"
+        with open(filename, mode) as file:
+            file.write(encoded_data + "\n")  # Write as a single line
+
+
+
+
+    def readConfig(self, filename = "output.bin",copyToLat = None):
+
+        configs = []
+        with open(filename, "r") as file:
+            for line in file:
+                # Decode Base64 and convert back to NumPy array
+                binary_data = base64.b64decode(line.strip())
+                configs.append(np.frombuffer(binary_data, dtype=np.float64))
+
+
+
+
+        if copyToLat:
+            self.lat = configs[copyToLat]
+
+        return configs
+
+
+    #def createTestData(self):
+    #    
+    #    latDimString = arr_str = "x".join(map(str, self.latdims))
+    #    topString = latDimString + "\n"

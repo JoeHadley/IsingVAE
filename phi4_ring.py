@@ -26,20 +26,27 @@ def plot(data):
 
 T = 10
 L = 10
+latdims = np.array((T,L))
 
-
-a = 2
+a = 3
 
 exp1 = a
 exp2 = a
 exp3 = a
 pregameWarmCycles = int(10**exp1)
-correlatorConfigs = int(10**exp2)
+correlatorConfigs = int(1)#10**exp2)
 interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
-latdims = np.array((T,L))
+
 lat = Lattice(latdims, warmCycles= pregameWarmCycles,dMax0=.9)
 
+#lat.metroCycles(interconfigCycles)
+#lat.writeConfig("output.bin"
+
+for i in range(50):
+    print(str(i)+"/50")
+    lat.metroCycles(interconfigCycles)
+    lat.writeConfig("output.bin")
 
 
 
@@ -47,47 +54,46 @@ lat = Lattice(latdims, warmCycles= pregameWarmCycles,dMax0=.9)
 
 
 
+#GCArray, GCErrors = lat.twoPointTimeCorr(correlatorConfigs,interconfigCycles)
+#constant = GCArray[0]
 
-GCArray, GCErrors = lat.twoPointTimeCorr(correlatorConfigs,interconfigCycles)
-constant = GCArray[0]
 
+#folder = "Results\\10x10\\"
 
-folder = "Results\\10x10\\"
+#filePath = folder + "GCArray"+"10^"+str(exp1)+"10^"+str(exp2)+ "10^"+str(exp3)+".txt"
+#np.savetxt(filePath, GCArray)
 
-filePath = folder + "GCArray"+"10^"+str(exp1)+"10^"+str(exp2)+ "10^"+str(exp3)+".txt"
-np.savetxt(filePath, GCArray)
-
-filePath = folder + "GCErrors"+"10^"+str(exp1)+"10^"+str(exp2)+ "10^"+str(exp3)+".txt"
-np.savetxt(filePath, GCErrors)
+#filePath = folder + "GCErrors"+"10^"+str(exp1)+"10^"+str(exp2)+ "10^"+str(exp3)+".txt"
+#np.savetxt(filePath, GCErrors)
 
 
 
 
 # Analytic calculation
 
-analyticResults = getAnalyticCorrelator(lat)
+#analyticResults = getAnalyticCorrelator(lat)
 
 
-print(analyticResults)
-
-
-
-
-
-xAxis = np.arange(latdims[0]+1)
-C, CError = lat.twoPointCorr()
-
-plt.errorbar(xAxis,GCArray,GCErrors,label="Monte Carlo")
-plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
-plt.xlabel("Tau")
+#print(analyticResults)
 
 
 
 
 
-plt.plot(analyticResults,linestyle="dashed",label="Analytical")
+#xAxis = np.arange(latdims[0]+1)
+#C, CError = lat.twoPointCorr()
+
+#plt.errorbar(xAxis,GCArray,GCErrors,label="Monte Carlo")
+#plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
+#plt.xlabel("Tau")
 
 
-plt.legend()
 
-plt.show()
+
+
+#plt.plot(analyticResults,linestyle="dashed",label="Analytical")
+
+
+#plt.legend()
+
+#plt.show()
