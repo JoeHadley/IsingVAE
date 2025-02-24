@@ -4,25 +4,18 @@ from header import *
 
 
 
-temperature_number = 1
-sample_number = 2500
-side_length = 8
-training_data_number = temperature_number*sample_number
 
-min_temp = 2.1
-max_temp = 2.1
+sample_number = 100
+side_length = 10
+training_data_number = sample_number
 
-data_path = "C:/Users/jjhadley/Documents/Projects/Ising/Data/L=8/"
-
-training_data_string = data_path +'training'
-testing_data_string = data_path +'testing'
+training_data_path = "C:/Users/Joe/Documents/Projects/IsingVAE/TrainingData.bin"
+testing_data_path = "C:/Users/Joe/Documents/Projects/IsingVAE/TestingData.bin"
 
 
-training_data, training_labels, training_temps = load_and_preprocess_data( training_data_string+'Data.dat', training_data_string+'Labels.dat', training_data_string+'TNumbers.dat', training_data_number, side_length)
-training_data, training_labels, training_temps = shuffle_data(training_data, training_labels, training_temps)
+training_data = processDataPhi4(training_data_path,side_length)
+testing_data = processDataPhi4(training_data_path,side_length)
 
-testing_data, testing_labels, testing_temps = load_and_preprocess_data(testing_data_string+'Data.dat', testing_data_string+'Labels.dat', testing_data_string+'TNumbers.dat', training_data_number, side_length)
-testing_data, testing_labels, testing_temps = shuffle_data(testing_data, testing_labels, testing_temps)
 
 
 
@@ -48,8 +41,8 @@ class CustomDataset(Dataset):
 dataset = CustomDataset(tensor_data)
 
 # Create a DataLoader object
-batch_size = 64
-ising_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+batch_size = 100
+phi4_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
 
 
@@ -64,7 +57,7 @@ optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 # Define the loss function
 def loss_function(x, x_hat, mean, logvar):
-    reproduction_loss = nn.functional.binary_cross_entropy(x_hat, x, reduction='sum')
+    reproduction_loss = nn.functional.mse_loss(x_hat, x, reduction='sum')
     KLD = -0.5 * torch.sum(1 + logvar - mean.pow(2) - logvar.exp())
     return reproduction_loss + KLD
 
@@ -76,9 +69,9 @@ def train(model, optimizer, epochs, device, data_loader):
     model.train()
     for epoch in range(epochs):
         overall_loss = 0
-        for batch_idx, x in enumerate(ising_loader):  # Adjusted to only unpack x
-            x_dim = 8 * 8  # Ensure this matches your data's dimensions
-            x = x.view(x.size(0), x_dim).to(device)  # Use x.size(0) for the current batch size
+        for batch_idx, x in enumerate(data_loader):  # Adjusted to only unpack x
+            x_dim = side_length * side_length  # Ensure this matches your data's dimensions
+            #x = x.view(x.size(0), x_dim).to(device)  # Use x.size(0) for the current batch size
 
             optimizer.zero_grad()
 
@@ -90,10 +83,10 @@ def train(model, optimizer, epochs, device, data_loader):
             loss.backward()
             optimizer.step()
 
-        print(f"\tEpoch {epoch + 1}\tAverage Loss: {overall_loss / len(ising_loader.dataset):.4f}")
+        print(f"\tEpoch {epoch + 1}\tAverage Loss: {overall_loss / len(data_loader.dataset):.4f}")
     return overall_loss
 
 # Train the model
-train(model, optimizer, epochs=100, device=device, data_loader=ising_loader)
+train(model, optimizer, epochs=100, device=device, data_loader=phi4_loader)
 
-torch.save(model.state_dict(), "C:/Users/jjhadley/Documents/Projects/VAE/VAE_model.pth")
+#torch.save(model.state_dict(), "C:/Users/jjhadley/Documents/Projects/VAE/VAE_model.pth")

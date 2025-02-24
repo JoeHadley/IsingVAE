@@ -394,22 +394,30 @@ class Lattice:
 
 
 
-    def readConfig(self, filename = "output.bin",copyToLat = None):
 
+
+
+    def readConfig(self, filename="output.bin", copyToLat=True, line_number=0):
         configs = []
+
         with open(filename, "r") as file:
-            for line in file:
+            for i, line in enumerate(file):
                 # Decode Base64 and convert back to NumPy array
                 binary_data = base64.b64decode(line.strip())
                 configs.append(np.frombuffer(binary_data, dtype=np.float64))
 
+                # Stop reading early if the desired line is reached
+                if i == line_number:
+                    break  # No need to read the entire file
 
-
+        # Ensure the requested line exists
+        if line_number >= len(configs):
+            raise IndexError(f"Line number {line_number} is out of range (max {len(configs)-1}).")
 
         if copyToLat:
-            self.lat = configs[copyToLat]
+            self.lat = configs[line_number]  # Use line_number instead of copyToLat
 
-        return configs
+        return configs[line_number]
 
 
     #def createTestData(self):

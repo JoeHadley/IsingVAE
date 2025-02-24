@@ -43,10 +43,11 @@ lat = Lattice(latdims, warmCycles= pregameWarmCycles,dMax0=.9)
 #lat.metroCycles(interconfigCycles)
 #lat.writeConfig("output.bin"
 
-for i in range(50):
-    print(str(i)+"/50")
+configNumber = 1000
+for i in range(configNumber):
+    print(str(i+1)+"/"+str(configNumber))
     lat.metroCycles(interconfigCycles)
-    lat.writeConfig("output.bin")
+    lat.writeConfig("TestingData.bin")
 
 
 

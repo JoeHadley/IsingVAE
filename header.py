@@ -18,6 +18,7 @@ from torchvision.datasets import MNIST
 import torchvision.transforms as transforms
 from torchvision.utils import save_image, make_grid
 
+import base64
 
 
 ## Utility functions and Wolff update
@@ -190,6 +191,26 @@ def load_and_preprocess_data(data_path, labels_path, temps_path, side_length):
     return data, labels, temps
 
 
+def processDataPhi4(data_path, side_length):
+    
+
+    num_lines = 0  # Counter for total lines
+
+    with open(data_path, "r") as file:
+        for line in file:
+            num_lines += 1  # Count lines
+
+
+    configs = np.zeros(shape=(num_lines,side_length**2))
+    with open(data_path, "r") as file:
+        for i in range(num_lines):
+            binary_data = base64.b64decode(line.strip())
+            configs[i,:] = np.frombuffer(binary_data, dtype=np.float64)
+
+
+    return configs
+
+
 def shuffle_data(data, labels, temps):
     num_rows = len(labels)
     indices = np.random.permutation(num_rows)
@@ -213,7 +234,7 @@ def shuffle_data(data, labels, temps):
 
 
 class VAE(nn.Module):
-  def __init__(self, input_dim=64, hidden_dim=32, latent_dim=2, device='cpu'):
+  def __init__(self, input_dim=100, hidden_dim=50, latent_dim=2, device='cpu'):
     super(VAE, self).__init__()
     self.device = device
 
