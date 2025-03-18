@@ -18,7 +18,7 @@ class Lattice:
         self.m = m
         self.l = l
         self.previousLat = self.lat.copy()
-        self.previousMove = self.previousMove = np.zeros(2)
+        self.previousMove = np.zeros(2)
 
         self.jumps = np.zeros(2,dtype=int)
         self.jumps[0] = -1
@@ -174,7 +174,7 @@ class Lattice:
                     if neighbs1[j] == neighbs2[j]:
                         miniSuccesses +=1
             if miniSuccesses ==len(neighbs1):
-                successes += 1
+                successes += 1 
 
 
 
