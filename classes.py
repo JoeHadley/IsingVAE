@@ -96,6 +96,7 @@ class Observer:
 
 
 
+
         self.recording = observableFuncName is not None
         self.observableFuncName = observableFuncName
         self.observableFunc = self.observables.get(self.observableFuncName, self.observables["empty"])
