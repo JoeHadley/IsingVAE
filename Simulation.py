@@ -1,74 +1,86 @@
 
 import numpy as np
 from Lattice import Lattice, Square2D
-from UpdateProposer import UpdateProposer
+from UpdateProposer import UpdateProposer, MetropolisProposer
 from Action import Action
+from Observer import Observer
 
 class Simulation:
-    def __init__(self, Lattice,Action,UpdateProposer):
-        self.Lattice = Lattice
-        self.Action = Action
-        self.UpdateProposer = UpdateProposer
+    def __init__(self, MyLattice,MyAction,MyUpdateProposer,MyObserver=None):
+        self.lattice = MyLattice
+        self.action = MyAction
+        self.updateProposer = MyUpdateProposer
+        self.observer = MyObserver
 
-        # Initialize lattice properties
-        self.latdims = self.Lattice.latdims
-        self.Ntot = np.prod(self.latdims)
+        # Take lattice properties from the lattice object
+        self.latdims = self.lattice.latdims
+        self.Ntot = self.lattice.Ntot
         self.dim = len(self.latdims)
-        self.workingLattice = Lattice.lat
+        
+        self.workingLattice = self.lattice.lat.copy()  # Working lattice for updates
 
         self.addressList = np.arange(self.Ntot)
 
 
-
+    def showLattice(self):
+        showLat = np.reshape(self.workingLattice,self.latdims)
+        print(showLat)
     
     def updateCycles(self,cycles):
         for c in range(cycles):
+            print(c)
             self.updateCycle()
     
     def updateCycle(self):
-        self.UpdateProposer.updateCycle(self,Lattice,Action)
+        for n in range(self.Ntot):
+            self.updateProposer.update(self, site=n)
+            if self.observer is not None:
+                self.observer.recordObservable(self.action, value=self.workingLattice[n])
 
     def initialize(self, initConfig=None):
-        self.lat = self.Lattice.initializeLattice(initConfig)
-
-
-Square2D = Square2D(latdims=(10, 10), shuffle=True)
-
-simulation = Simulation(Lattice, Action, UpdateProposer)
-
-#def recordObservable(self,value = None):
-#if value == None:
-#    value = self.observableFunc()
-
-#if self.historyCount < self.historyLimit:
-#    self.history[self.historyCount] = value
-#    self.historyCount += 1
-#else:
-#    print("Observable History Limit Reached")
-#    self.historyLimitReached = True # Just warn once
-
-#def returnHistory(self):
-#    return self.history[0:self.historyCount]
-
-#self.historyLimit = historyLimit
-#self.history = np.zeros(historyLimit)
-#self.historyCount = 0
-#self.historyLimitReached = False
+        self.lat = self.lattice.initializeLattice(initConfig)
+    
+    def saveConfig(self, filename):
+        with open(filename, 'w') as f:
+            for value in self.workingLattice:
+                f.write(f"{value}\n")  
 
 
 
-#self.recording = observableFuncName is not None
-#self.observableFuncName = observableFuncName
-#self.observableFunc = self.observables.get(self.observableFuncName, self.observables["empty"])
-#self.recordWhileWarming = recordWhileWarming if self.recording else False
+my_lattice = Square2D(latdims=(10, 10), shuffle=True)
+my_action = Action(m=1, l=1, dMax0=1)
+my_action.printParams()
+my_proposer = MetropolisProposer(dMax=1, beta=5)
+my_proposer.printParams()
+my_observer = Observer(observableFuncName="phiBar", recordWhileWarming=True, historyLimit=10000)
+simulation = Simulation(my_lattice, my_action, my_proposer, my_observer)
+simulation.initialize(initConfig=None)
+simulation.updateCycles(cycles=10)
+simulation.showLattice()
+simulation.observer.returnHistory()
 
 
+import matplotlib.pyplot as plt
 
-#self.observables = {
-#    "phi4": lambda: self.expectation(func=lambda x: x**4),
-#    "phi2": lambda: self.expectation(func=lambda x: x**2),
-#    "action": self.findAction,
-#    "phiBar": self.expectation,  # Default expectation#
+# Reshape the lattice
+showLat = np.reshape(simulation.workingLattice, simulation.latdims)
 
-#    "empty": lambda: 0,
-#}
+# Create a figure with 1 row and 2 columns
+fig, axs = plt.subplots(1, 2, figsize=(12, 5))  # Increase width for side-by-side
+
+# Plot lattice configuration
+im = axs[0].imshow(showLat, cmap='Greys', origin='lower', aspect='equal')
+fig.colorbar(im, ax=axs[0], label="Value")
+axs[0].set_title("φ⁴ Lattice Configuration")
+axs[0].set_xticks([])
+axs[0].set_yticks([])
+
+# Plot histogram
+axs[1].hist(simulation.workingLattice, bins=30, density=True, alpha=0.7, color='blue')
+axs[1].set_title("Histogram of Lattice Values")
+axs[1].set_xlabel("Lattice Value")
+axs[1].set_ylabel("Density")
+axs[1].grid(True)
+
+plt.tight_layout()
+plt.show()
