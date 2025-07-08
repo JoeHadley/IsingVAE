@@ -41,7 +41,7 @@ class VAE(nn.Module):
             nn.Linear(latent_dim, hidden_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, input_dim),
-            nn.Sigmoid()
+            nn.Sigmoid() #TODO: the output should range from -inf to +inf
         )
 
     def encode(self, x):
@@ -75,6 +75,7 @@ class VAE(nn.Module):
         log_prob = -0.5 * ((z - z_mean)**2 / var + z_logvar + torch.log(2 * torch.pi))
         return log_prob
 
+    #TODO: should f be any map from the latent space z to R^M
     def jacobian_norm(z, f):
         """
         Compute norm of Jacobian df/dz where f: z -> R^2
@@ -85,6 +86,8 @@ class VAE(nn.Module):
         grad = torch.autograd.grad(outputs=output, inputs=z,
                                 grad_outputs=torch.ones_like(output),
                                 create_graph=True)[0]  # shape: (1,)
+        #TODO: understand how autograd.grad works and whether it is efficient/correct
+        #TODO: can we understand how it knows about the decoder?
         return grad.norm()
 
     
@@ -145,12 +148,16 @@ class VAE(nn.Module):
         :param phi: Input tensor
         :return: Reconstructed output, mean, and log variance
         """
+        #TODO: the steps below are completely deterministic, we need to introduce a random layer + reparameterization trick
         z = self.encoder(phi)
         delta_phi = self.decoder(z)
         phi_prime = phi + delta_phi
 
+
         # Inverse latent (solve z' such that decoder(z') = phi - phi_prime)
-        z_inv = self.encoder(phi_prime)
+        z_inv = self.encoder(phi_prime) #TODO: We know that z transforms phi to phi_prime via the decoder. 
+        #TODO: here, we need to find z' such that phi = decoder(z') + phi_prime, this is the inverse transformation from phi_prime to phi.
+
         # Compute proposal densities
         log_q_z = self.log_prob_q(z, phi)
         log_q_z_inv = self.log_prob_q(z_inv, phi_prime)
