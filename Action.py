@@ -8,34 +8,61 @@ class Action:
         self.dMax = dMax0
         self.m = m
         self.l = l
- 
 
-    def findAction(self,Lattice,workingLattice):
+
+        self.observables = {
+            "phi4": lambda lattice, workingLattice: self.expectation(lattice, workingLattice, func=lambda x: x**4),
+            "phi2": lambda lattice, workingLattice: self.expectation(lattice, workingLattice, func=lambda x: x**2),
+            "phiBar": lambda lattice, workingLattice: self.expectation(lattice, workingLattice),
+            "action": self.findAction,
+            "empty": lambda lattice, workingLattice: 0,
+        }
+ 
+    def printParams(self):
+        print(f"Action parameters: m = {self.m}, l = {self.l}, dMax = {self.dMax}")
+
+    def findAction(self,lattice,workingLattice):
         S = 0
-        dS = 0
         
-        for n in range(self.Ntot):
-            dS = 0
-            neighbTotal = 0
-            for d in range(Lattice.dim):
-                neighbTotal += workingLattice[Lattice.shift(n,d,1)]
+        
+        for n in range(lattice.Ntot):
             
+            phi = workingLattice[n]
+            neighbTotal = 0
+            for d in range(lattice.dim):
+                neighbTotal += workingLattice[lattice.shift(n,d,1)]
+            
+            #kinetic = lattice.dim * phi**2 - phi * neighbTotal
+            kinetic = 2*lattice.dim * phi**2 - 2 * phi * neighbTotal
+
+            mass_term = 0.5 * self.m**2 * phi**2
+            quartic = (self.l / 24) * phi**4
 
             #dS += (self.dim + (self.m**2)/2)*self.lat[n]**2 - self.lat[n]*neighbTotal + (self.l / 24) * self.lat[n]**4 
-            dS += (Lattice.dim + (self.m**2)/2)*workingLattice[n]**2 - workingLattice[n]*neighbTotal + (self.l / 24) * workingLattice[n]**4 
+            #dS += (lattice.dim + (self.m**2)/2)*workingLattice[n]**2 - workingLattice[n]*neighbTotal + (self.l / 24) * workingLattice[n]**4 
             
-            S += dS
+            S += kinetic - mass_term + quartic
         return S
 
-    def actionChange(self,Lattice, workingLattice, address,d):
+    def actionChange2(self,lattice, workingLattice, address,d):
+        #directly calculate the change in action for a given site and displacement
+        OldAction = self.findAction(lattice, workingLattice)
+        #Copy the working lattice to avoid modifying it directly
+        workingLattice2 = workingLattice.copy()
+        workingLattice2[address] += d
+        NewAction = self.findAction(lattice, workingLattice2)
+        return NewAction - OldAction
 
+    def actionChange(self,lattice, workingLattice, address,d):
 
-        neighbours = Lattice.getNeighbours(address)
+        dim = lattice.dim
+
+        neighbours = lattice.getNeighbours(address)
 
         
 
         neighbSum = 0
-        for j in range(2*self.dim): # Not currently general for other lattice shapes
+        for j in range(2*dim): # Not currently general for other lattice shapes
             n = int(neighbours[j])
             neighbSum += workingLattice[n]
 
@@ -44,9 +71,27 @@ class Action:
 
 
         dSl = self.l*( \
-        + d*np.power(self.lat[address],3)/6  \
-        + d*d*np.power(self.lat[address],2)/4 \
-        + d*d*d*self.lat[address]/6 \
+        + d*np.power(workingLattice[address],3)/6  \
+        + d*d*np.power(workingLattice[address],2)/4 \
+        + d*d*d*workingLattice[address]/6 \
         + d*d*d*d/24 )
 
         return dS +dSl
+    
+    def expectation(self, lattice, workingLattice, func=None):
+        # If func is None, use identity
+        if func is None:
+            func = lambda x: x
+
+        M = 0
+        for n in range(lattice.Ntot):
+            M += func(workingLattice[n])
+
+        return M / lattice.Ntot
+    
+    def computeObservable(self, name, lattice, workingLattice):
+        try:
+            func = self.observables[name]
+        except KeyError:
+            raise ValueError(f"Unknown observable: {name}")
+        return func(lattice, workingLattice)
