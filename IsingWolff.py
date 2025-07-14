@@ -3,8 +3,7 @@ from header import *
 ## Cv test for Wolff algorithm
 
 
-
-
+# Test update 
 numTemperatures = 50
 roundsTotal = 100
 updatesInARound = 10
