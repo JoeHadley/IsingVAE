@@ -31,18 +31,17 @@ class VAE(nn.Module):
         )
 
         # Latent mean and variance
-        self.mean_layer = nn.Linear(latent_dim, 2)
-        self.logvar_layer = nn.Linear(latent_dim, 2)
+        self.mean_layer = nn.Linear(latent_dim, latent_dim)
+        self.logvar_layer = nn.Linear(latent_dim, latent_dim)
 
         # Decoder
         self.decoder = nn.Sequential(
-            nn.Linear(2, latent_dim),
-            nn.LeakyReLU(0.2),
             nn.Linear(latent_dim, hidden_dim),
             nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim, input_dim),
-            nn.Sigmoid() #TODO: the output should range from -inf to +inf
+            nn.Linear(hidden_dim, input_dim)
         )
+        # Output sigmoid removed
+
 
     def encode(self, x):
         x = self.encoder(x)
@@ -51,7 +50,7 @@ class VAE(nn.Module):
 
     def reparameterization(self, mean, logvar):
         std = torch.exp(0.5 * logvar)  # Calculate the standard deviation
-        epsilon = torch.randn_like(std).to(self.device)  # Sample epsilon
+        epsilon = torch.randn_like(std)  # Sample epsilon
         z = mean + std * epsilon  # Reparameterization trick
         return z
 
@@ -62,21 +61,27 @@ class VAE(nn.Module):
         mean, logvar = self.encode(x)
         z = self.reparameterization(mean, logvar)
         x_hat = self.decode(z)
-        return x_hat, mean, logvar  # Ensure consistent naming
+        return x_hat, mean, logvar
   
 
-    def log_prob_q(z, phi, encoder):
+    def log_prob_q(self, z, phi):
         """
-        Computes log q(z | phi) where z is scalar, phi is vector (e.g. 2D)
-        encoder: returns (z_mean, z_logvar)
+        Computes log q(z | phi), assuming q is a diagonal Gaussian.
+        z: Tensor of shape (latent_dim,) or (batch_size, latent_dim)
+        phi: input to encoder (same shape as input_dim)
+
+        Returns:
+            log_prob: log probability of z under q(z|phi)
         """
-        z_mean, z_logvar = encoder(phi)  # both scalar
+        z_mean, z_logvar = self.encode(phi)
         var = torch.exp(z_logvar)
-        log_prob = -0.5 * ((z - z_mean)**2 / var + z_logvar + torch.log(2 * torch.pi))
-        return log_prob
+        log2pi = torch.log(torch.tensor(2.0 * torch.pi, device=z.device))
+
+        log_prob = -0.5 * ((z - z_mean) ** 2 / var + z_logvar + log2pi)
+        return log_prob.sum(dim=-1)  # sum over latent dimensions
 
     #TODO: should f be any map from the latent space z to R^M
-    def jacobian_norm(z, f):
+    def jacobian_norm(self,z, f):
         """
         Compute norm of Jacobian df/dz where f: z -> R^2
         Returns scalar norm ||df/dz|| = sqrt((df_x/dz)^2 + (df_y/dz)^2)
@@ -104,11 +109,11 @@ class VAE(nn.Module):
         :return: Loss value
         """
         # Forward pass through the VAE
-        x_hat, mean, logvar = self.forward(phi)
+        mean, logvar = self.encode(phi)
 
         # Compute log likelihood and prior
-        log_likelihood_value = self.log_likelihood(phi, data, sigma_y, forward_model)
-        log_prior_value = self.log_prior(phi, mu0, sigma0)
+        #log_likelihood_value = self.log_likelihood(phi, data, sigma_y, forward_model)
+        #log_prior_value = self.log_prior(phi, mu0, sigma0)
 
         # Compute KL divergence loss
         kl_loss = -0.5 *self.beta* torch.sum(1 + logvar - mean.pow(2) - logvar.exp())
@@ -122,56 +127,82 @@ class VAE(nn.Module):
             d = phi.shape[0]
             var0 = sigma0**2
             diff = phi - mu0
-            logp = -0.5 * (d * torch.log(2 * torch.pi * var0) + (diff**2).sum() / var0)
+            log_term = torch.log(torch.tensor(2.0 * torch.pi * var0, device=diff.device))
+            logp = -0.5 * (d * log_term + (diff ** 2).sum() / var0)
             return logp
 
-    def log_likelihood(self,phi, data, sigma_y, forward_model):
+    def log_likelihood(self,phi, data, sigma_y):
         """
         Gaussian likelihood: p(data | phi) = N(data | g(phi), sigma_y^2 I)
         - forward_model(phi): predicts mean of data given phi
         """
-        pred = forward_model(phi)
+        
+        pred = self.forward(phi)  # Forward pass to get predictions
+
+        
         var_y = sigma_y**2
         diff = data - pred
         d = data.shape[0]
-        logl = -0.5 * (d * torch.log(2 * torch.pi * var_y) + (diff**2).sum() / var_y)
+        log_term = torch.log(torch.tensor(2.0 * torch.pi * var_y, device=diff.device))
+        logl = -0.5 * (d * log_term + (diff ** 2).sum() / var_y)
         return logl
 
-    def log_p(self,phi, data, mu0, sigma0, sigma_y, forward_model):
+    def log_p(self,phi, data, mu0, sigma0, sigma_y):
         """Log posterior up to constant"""
-        log_p = self.log_likelihood(phi, data, sigma_y, forward_model) + self.log_prior(phi, mu0, sigma0)
+        log_p = self.log_likelihood(phi, data, sigma_y) + self.log_prior(phi, mu0, sigma0)
         return log_p
+
+    def forward(self,phi):
+        mean, logvar = self.encode(phi)
+        z = self.reparameterization(mean, logvar)
+        return self.decode(z)
 
     def runLoop(self, phi,optimiser): # phi is the input tensor
         """
-        Run a forward pass through the VAE.
+        Run a forward pass through the VAE and train.
         :param phi: Input tensor
         :return: Reconstructed output, mean, and log variance
         """
-        #TODO: the steps below are completely deterministic, we need to introduce a random layer + reparameterization trick
-        z = self.encoder(phi)
-        delta_phi = self.decoder(z)
+
+        mean, logvar = self.encode(phi)
+        z = self.reparameterization(mean, logvar)
+
+        delta_phi = self.decode(z)
         phi_prime = phi + delta_phi
 
 
+
+
         # Inverse latent (solve z' such that decoder(z') = phi - phi_prime)
-        z_inv = self.encoder(phi_prime) #TODO: We know that z transforms phi to phi_prime via the decoder. 
+        #z_inv = self.encoder(phi_prime) #TODO: We know that z transforms phi to phi_prime via the decoder. 
         #TODO: here, we need to find z' such that phi = decoder(z') + phi_prime, this is the inverse transformation from phi_prime to phi.
+
+        z_inv_mean, _ = self.encode(phi_prime)
+        z_inv = z_inv_mean
+
 
         # Compute proposal densities
         log_q_z = self.log_prob_q(z, phi)
         log_q_z_inv = self.log_prob_q(z_inv, phi_prime)
 
         # Jacobian magnitude (can use norm of df/dz or autodiff)
-        log_det_j = torch.log(self.jacobian_norm(z))
-        log_det_j_inv = torch.log(self.jacobian_norm(z_inv))
+        log_det_j = torch.log(self.jacobian_norm(z, self.decode))
+        log_det_j_inv = torch.log(self.jacobian_norm(z_inv, self.decode))
+
+        log_p_phi = self.log_p(phi, phi, mu0=0, sigma0=1, sigma_y=1)
+        log_p_phi_prime = self.log_p(phi_prime, phi_prime, mu0=0, sigma0=1, sigma_y=1)
 
         # Compute log of acceptance ratio (up to target densities)
         log_alpha = (
-            self.log_p(phi_prime) - self.log_p(phi)
+            log_p_phi_prime - log_p_phi
             + log_q_z_inv - log_q_z
             + log_det_j - log_det_j_inv
         )
+
+
+
+
+
 
         # MH Loss (maximize acceptance)
         mh_loss = -log_alpha.clamp(max=0)
