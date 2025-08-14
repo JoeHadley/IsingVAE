@@ -53,6 +53,17 @@ class Action:
         NewAction = self.findAction(lattice, workingLattice2)
         return NewAction - OldAction
 
+    def sumNeighbours(self, simulation, site):
+        lattice = simulation.lattice
+        workingLattice = simulation.workingLattice
+
+        # Sum the values of the neighbours of a given site
+        neighbSum = 0
+        for d in range(2*lattice.dim):
+            neighbSum += workingLattice[lattice.shift(site, d, 1)]
+            neighbSum += workingLattice[lattice.shift(site, d, -1)]
+        return neighbSum
+
     def actionChange(self,lattice, workingLattice, address,d):
 
         dim = lattice.dim

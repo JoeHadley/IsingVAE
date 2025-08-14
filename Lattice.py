@@ -8,7 +8,7 @@ import os
 from abc import ABC, abstractmethod
 
 class Lattice(ABC):
-    def __init__(self, latdims, Ntot):
+    def __init__(self, latdims, Ntot,lat):
         self.latdims = latdims  # all lattices will have this
         self.Ntot = Ntot
         self.addressList = np.arange(self.Ntot)
@@ -19,11 +19,15 @@ class Lattice(ABC):
         pass
 
 
-class Square2D(Lattice):
+
+class SquareND(Lattice):
     def __init__(self, latdims, shuffle = False, proposer = None):
-        super().__init__(latdims, np.prod(latdims))
+        self.latdims = latdims
         self.Ntot = np.prod(self.latdims)
         self.dim = len(self.latdims)
+        self.lat = np.zeros(self.Ntot)  # Initialize the lattice with zeros
+        super().__init__(latdims, np.prod(latdims), self.lat)
+        
         
         self.addressList = np.arange(self.Ntot)
         self.shuffle = shuffle
@@ -50,10 +54,7 @@ class Square2D(Lattice):
         for v in range(self.dim):
             self.vec[v+1] = self.vec[v]/latdims[v]
 
-        self.warming = True
-        if warmCycles is not None:
-            self.metroCycles(warmCycles)
-        self.warming = False
+
 
 
 
@@ -114,5 +115,14 @@ class Square2D(Lattice):
 
     
     
+my_lattice = SquareND(latdims=np.array([3]), shuffle=True)
+
+for i in range(my_lattice.Ntot):
+    my_lattice.lat[i] = i
+
+my_lattice.show()
+
+print(my_lattice.shift(0,0,-1))
+
 
 

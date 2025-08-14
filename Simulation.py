@@ -1,23 +1,27 @@
 
 import numpy as np
-from Lattice import Lattice, Square2D
-from UpdateProposer import UpdateProposer, MetropolisProposer
+from Lattice import Lattice, SquareND
+from UpdateProposer import UpdateProposer, MetropolisProposer, VAEProposer
+
 from Action import Action
 from Observer import Observer
-
+from VAEDefinition import VAE
 class Simulation:
-    def __init__(self, MyLattice,MyAction,MyUpdateProposer,MyObserver=None):
+    def __init__(self, MyLattice,MyAction,MyUpdateProposer,MyObserver=None,warmCycles=0):
         self.lattice = MyLattice
         self.action = MyAction
         self.updateProposer = MyUpdateProposer
         self.observer = MyObserver
 
+        self.warmCycles = warmCycles
+
         # Take lattice properties from the lattice object
         self.latdims = self.lattice.latdims
         self.Ntot = self.lattice.Ntot
         self.dim = len(self.latdims)
+        self.initialize()
         
-        self.workingLattice = self.lattice.lat.copy()  # Working lattice for updates
+        self.workingLattice = self.lat.copy()  # Working lattice for updates
 
         self.addressList = np.arange(self.Ntot)
 
@@ -28,7 +32,7 @@ class Simulation:
     
     def updateCycles(self,cycles):
         for c in range(cycles):
-            print(c)
+            print(f"Running cycle {c+1}/{cycles}")
             self.updateCycle()
     
     def updateCycle(self):
@@ -39,6 +43,8 @@ class Simulation:
 
     def initialize(self, initConfig=None):
         self.lat = self.lattice.initializeLattice(initConfig)
+        self.updateCycles(self.warmCycles)
+
     
     def saveConfig(self, filename):
         with open(filename, 'w') as f:
@@ -47,11 +53,17 @@ class Simulation:
 
 
 
-my_lattice = Square2D(latdims=(10, 10), shuffle=True)
+
+my_lattice = SquareND(latdims=np.array([3]), shuffle=True)
 my_action = Action(m=1, l=1, dMax0=1)
 my_action.printParams()
-my_proposer = MetropolisProposer(dMax=1, beta=5)
-my_proposer.printParams()
+#my_proposer = MetropolisProposer(dMax=1, beta=5)
+
+input_dim = 3  # Example input dimension
+hidden_dim = 2  # Example hidden dimension
+latent_dim = 1  # Example latent dimension
+my_proposer = VAEProposer(input_dim,hidden_dim,latent_dim)  
+
 my_observer = Observer(observableFuncName="phiBar", recordWhileWarming=True, historyLimit=10000)
 simulation = Simulation(my_lattice, my_action, my_proposer, my_observer)
 simulation.initialize(initConfig=None)
@@ -66,21 +78,21 @@ import matplotlib.pyplot as plt
 showLat = np.reshape(simulation.workingLattice, simulation.latdims)
 
 # Create a figure with 1 row and 2 columns
-fig, axs = plt.subplots(1, 2, figsize=(12, 5))  # Increase width for side-by-side
+#fig, axs = plt.subplots(1, 2, figsize=(12, 5))  # Increase width for side-by-side
 
 # Plot lattice configuration
-im = axs[0].imshow(showLat, cmap='Greys', origin='lower', aspect='equal')
-fig.colorbar(im, ax=axs[0], label="Value")
-axs[0].set_title("φ⁴ Lattice Configuration")
-axs[0].set_xticks([])
-axs[0].set_yticks([])
+#im = axs[0].imshow(showLat, cmap='Greys', origin='lower', aspect='equal')
+#fig.colorbar(im, ax=axs[0], label="Value")
+#axs[0].set_title("φ⁴ Lattice Configuration")
+#axs[0].set_xticks([])
+#axs[0].set_yticks([])
 
 # Plot histogram
-axs[1].hist(simulation.workingLattice, bins=30, density=True, alpha=0.7, color='blue')
-axs[1].set_title("Histogram of Lattice Values")
-axs[1].set_xlabel("Lattice Value")
-axs[1].set_ylabel("Density")
-axs[1].grid(True)
+#axs[1].hist(simulation.workingLattice, bins=30, density=True, alpha=0.7, color='blue')
+#axs[1].set_title("Histogram of Lattice Values")
+#axs[1].set_xlabel("Lattice Value")
+#axs[1].set_ylabel("Density")
+#axs[1].grid(True)
 
-plt.tight_layout()
-plt.show()
+#plt.tight_layout()
+#plt.show()

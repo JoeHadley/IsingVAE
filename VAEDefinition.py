@@ -13,13 +13,14 @@ from torchvision.utils import save_image, make_grid
 
 
 class VAE(nn.Module):
-    def __init__(self, input_dim=100, hidden_dim=50, latent_dim=2, device='cpu',beta=1.0):
+    def __init__(self, input_dim=100, hidden_dim=50, latent_dim=3, device='cpu',beta=1.0,lr=1e-3):
         super(VAE, self).__init__()
         self.device = device   
         self.beta = beta
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.latent_dim = latent_dim
+        
         
 
         # Encoder
@@ -29,6 +30,7 @@ class VAE(nn.Module):
             nn.Linear(hidden_dim, latent_dim),
             nn.LeakyReLU(0.2)
         )
+        
 
         # Latent mean and variance
         self.mean_layer = nn.Linear(latent_dim, latent_dim)
@@ -41,6 +43,9 @@ class VAE(nn.Module):
             nn.Linear(hidden_dim, input_dim)
         )
         # Output sigmoid removed
+        #TODO Investigate best stack of layers
+
+        self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
 
     def encode(self, x):
@@ -57,11 +62,7 @@ class VAE(nn.Module):
     def decode(self, z):
         return self.decoder(z)
 
-    def forward(self, x):
-        mean, logvar = self.encode(x)
-        z = self.reparameterization(mean, logvar)
-        x_hat = self.decode(z)
-        return x_hat, mean, logvar
+
   
 
     def log_prob_q(self, z, phi):
@@ -73,9 +74,13 @@ class VAE(nn.Module):
         Returns:
             log_prob: log probability of z under q(z|phi)
         """
+
+        #print(f"z: {z}, phi: {phi}")
+        #print(f"z type: {type(z)}, phi type: {type(phi)}")
+
         z_mean, z_logvar = self.encode(phi)
         var = torch.exp(z_logvar)
-        log2pi = torch.log(torch.tensor(2.0 * torch.pi, device=z.device))
+        log2pi = torch.log(torch.tensor(2.0 * torch.pi))
 
         log_prob = -0.5 * ((z - z_mean) ** 2 / var + z_logvar + log2pi)
         return log_prob.sum(dim=-1)  # sum over latent dimensions
@@ -86,6 +91,9 @@ class VAE(nn.Module):
         Compute norm of Jacobian df/dz where f: z -> R^2
         Returns scalar norm ||df/dz|| = sqrt((df_x/dz)^2 + (df_y/dz)^2)
         """
+
+
+
         z = z.clone().detach().requires_grad_(True)
         output = f(z)  # Should return tensor of shape (2,)
         grad = torch.autograd.grad(outputs=output, inputs=z,
@@ -152,12 +160,81 @@ class VAE(nn.Module):
         log_p = self.log_likelihood(phi, data, sigma_y) + self.log_prior(phi, mu0, sigma0)
         return log_p
 
+
+
+    def compute_decoder_jacobian(self, input_z):
+        """
+        Compute the Jacobian of decoder(z) ∈ ℝ³ with respect to z ∈ ℝ²
+        """
+        z = input_z.clone().detach().requires_grad_(True)
+        output = self.decode(z)  # output shape: (3,)
+        
+        jacobian = []
+        for i in range(output.shape[0]):
+            grad_i = torch.autograd.grad(output[i], z, retain_graph=True, create_graph=True)[0]
+            jacobian.append(grad_i)
+            
+        jacobian = torch.stack(jacobian, dim=0)  # shape: (3, 2)
+        return jacobian
+
+    def compute_jacobian_term(self, input_z):
+        jacobian = self.compute_decoder_jacobian(input_z)
+        JTJ = jacobian.T @ jacobian  # Compute Jacobian transpose @ Jacobian
+        detTerm = torch.sqrt(torch.linalg.det(JTJ))
+        return detTerm
+
+
+    def compute_acceptance_probability(self, input_phi, output_phi):
+        """
+        Compute the acceptance probability for the proposed update.
+        :param input_phi: Current field value
+        :param output_phi: Proposed new field value
+        :return: Acceptance probability
+        """
+        
+
+        log_q_zF = self.log_prob_q(output_phi, input_phi)
+        log_q_zB = self.log_prob_q(input_phi, output_phi)
+        log_det_jF = torch.log(self.compute_jacobian_term(output_phi))
+        log_det_jB = torch.log(self.compute_jacobian_term(input_phi))
+        log_alpha = ( log_q_zF - log_q_zB - log_det_jF + log_det_jB
+        )
+
+        acceptance_prob = torch.exp(log_alpha).clamp(max=1.0)
+        return acceptance_prob.item()  # Return as a scalar value
+
     def forward(self,phi):
         mean, logvar = self.encode(phi)
         z = self.reparameterization(mean, logvar)
         return self.decode(z)
 
-    def runLoop(self, phi,optimiser): # phi is the input tensor
+    
+    def compute_log_alpha(self, input_phi, output_phi, zF, zB):
+        """
+        Compute the log acceptance ratio for the proposed update.
+        :param input_phi: Current field value
+        :param output_phi: Proposed new field value
+        :return: Log acceptance ratio
+        """
+        # Compute proposal densities
+        log_q_zF = self.log_prob_q(zF, input_phi)
+        log_q_zB = self.log_prob_q(zB, output_phi)
+        # Jacobian magnitude (can use norm of df/dz or autodiff)
+        log_det_jF = torch.log(self.compute_jacobian_term(zF))
+        log_det_jB = torch.log(self.compute_jacobian_term(zB))
+
+        # Log probabilities of initial and final states
+        #log_p_phi = self.log_p(phi, phi, mu0=0, sigma0=1, sigma_y=1)
+        #log_p_phi_prime = self.log_p(phi2, phi2, mu0=0, sigma0=1, sigma_y=1)
+
+        # Compute log of acceptance ratio (up to target densities)
+        log_alpha = ( log_q_zF - log_q_zB
+                     - log_det_jF + log_det_jB
+        )
+        return log_alpha
+
+    
+    def runLoop(self, phi): # phi is the input tensor
         """
         Run a forward pass through the VAE and train.
         :param phi: Input tensor
@@ -165,60 +242,42 @@ class VAE(nn.Module):
         """
 
         mean, logvar = self.encode(phi)
-        z = self.reparameterization(mean, logvar)
 
-        delta_phi = self.decode(z)
-        phi_prime = phi + delta_phi
+        zF = self.reparameterization(mean, logvar)
+        phi2 = self.decode(zF)  # Reconstructed output
 
-
-
-
-        # Inverse latent (solve z' such that decoder(z') = phi - phi_prime)
-        #z_inv = self.encoder(phi_prime) #TODO: We know that z transforms phi to phi_prime via the decoder. 
-        #TODO: here, we need to find z' such that phi = decoder(z') + phi_prime, this is the inverse transformation from phi_prime to phi.
-
-        z_inv_mean, _ = self.encode(phi_prime)
-        z_inv = z_inv_mean
+        zB_mean, _ = self.encode(phi2)
+        zB = zB_mean
+        phi3 = self.decode(zB)  # Reconstructed output from inverse z
+        # Will remain to be seen if phi3 is near-equal to phi, may need to adjust loss to insist on this
 
 
-        # Compute proposal densities
-        log_q_z = self.log_prob_q(z, phi)
-        log_q_z_inv = self.log_prob_q(z_inv, phi_prime)
 
-        # Jacobian magnitude (can use norm of df/dz or autodiff)
-        log_det_j = torch.log(self.jacobian_norm(z, self.decode))
-        log_det_j_inv = torch.log(self.jacobian_norm(z_inv, self.decode))
-
-        log_p_phi = self.log_p(phi, phi, mu0=0, sigma0=1, sigma_y=1)
-        log_p_phi_prime = self.log_p(phi_prime, phi_prime, mu0=0, sigma0=1, sigma_y=1)
-
-        # Compute log of acceptance ratio (up to target densities)
-        log_alpha = (
-            log_p_phi_prime - log_p_phi
-            + log_q_z_inv - log_q_z
-            + log_det_j - log_det_j_inv
-        )
-
-
+        log_alpha = self.compute_log_alpha(phi, phi2, zF, zB)
 
 
 
 
         # MH Loss (maximize acceptance)
-        mh_loss = -log_alpha.clamp(max=0)
+        mh_loss = log_alpha.clamp(max=0)
 
         # KL loss (like VAE)
-        kl_loss = self.computeKLLoss(phi, phi_prime, mu0=0, sigma0=1, sigma_y=1, forward_model=self.decoder)
+        kl_loss = self.computeKLLoss(phi, phi2, mu0=0, sigma0=1, sigma_y=1, forward_model=self.decoder)
+
 
         # Total loss
         loss = mh_loss + self.beta * kl_loss
         loss.backward()
-        optimiser.step()
 
 
-myVAE = VAE(input_dim=100, hidden_dim=50, latent_dim=2, device='cpu', beta=1.0)
+        self.optimizer.step()
+
+        return phi2, log_alpha
+
+myVAE = VAE(input_dim=3, hidden_dim=2, latent_dim=1, device='cpu', beta=1.0)
 # Example usage
-optimizer = optim.Adam(myVAE.parameters(), lr=1e-3)
+
 # Assuming you have some input tensor `phi`
-phi = torch.randn(100)  # Example input tensor
-myVAE.runLoop(phi, optimizer)
+phi = torch.randn(3)  # Example input tensor
+myVAE.runLoop(phi)
+

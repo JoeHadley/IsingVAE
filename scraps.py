@@ -30,3 +30,36 @@ def readConfig(self, filename = "output.bin",copyToLat = True):
         self.lat = configs[copyToLat]
 
     return configs
+
+#def forward(self, x):
+#    mean, logvar = self.encode(x)
+#    z = self.reparameterization(mean, logvar)
+#    x_hat = self.decode(z)
+#    return x_hat, mean, logvar
+
+
+
+log_alpha = (
+            log_p_phi_prime - log_p_phi
+            + log_q_zF - log_q_zF
+            + log_det_jF - log_det_jB
+        )
+
+
+def getDetTerm(input_z):
+    jacobian = myVAE.compute_decoder_jacobian(input_z)  # Compute the Jacobian
+    JTJ = jacobian.T @ jacobian  # Compute Jacobian transpose @ Jacobian
+    detTerm = torch.sqrt(torch.linalg.det(JTJ))  # Compute the square root of the determinant
+    return detTerm
+
+jacobian = myVAE.compute_decoder_jacobian(torch.tensor([1.0, 2.0]))  # Example input for Jacobian computation
+#jac_norm = jacobian.norm()  # Compute the norm of the Jacobian
+JTJ = jacobian.T @ jacobian
+detTerm = torch.sqrt(torch.linalg.det(JTJ))   
+#print("Jacobian:", jacobian)
+#print("Jacobian Norm:", jac_norm)
+print("detTerm:", detTerm)  # Print the product of Jacobian transpose and Jacobian
+print("detTerm from getDetTerm:", getDetTerm(torch.tensor([1.0, 2.0])))  # Example input for determinant term computation
+print(myVAE.compute_decoder_jacobian(torch.tensor([1.0, 2.0])))  # Example input for Jacobian computation
+
+print(myVAE.jacobian_norm(torch.tensor([1.0, 2.0]), myVAE.decode))  # Example input for Jacobian norm computation
