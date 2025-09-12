@@ -77,18 +77,7 @@ class SquareND(Lattice):
         indices = np.random.permutation(self.Ntot)
         self.addressList = self.addressList[indices]
     
-    def expectation(self,func=None):
-        
-        # If func is None, use identity
-        if func is None:
-            func = lambda x: x
 
-        M = 0
-        for n in range(self.Ntot):
-            M += func(self.lat[n])
-
-        M = M/self.Ntot
-        return M
 
     def shift(self,site,dim,jump):
         shiftedSite = int(self.vec[dim]* (site //self.vec[dim]) + (site + jump * self.vec[dim+1] + self.Ntot) % (self.vec[dim]))
@@ -122,7 +111,7 @@ for i in range(my_lattice.Ntot):
 
 my_lattice.show()
 
-print(my_lattice.shift(0,0,-1))
+print(my_lattice.shift(0,0,0))
 
 
 

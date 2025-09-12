@@ -1,21 +1,57 @@
 import numpy as np
 
 class Observer:
-    def __init__(self, observableFuncName=None, recordWhileWarming=False, historyLimit=1000):
+    def __init__(self, observableFuncName=None, historyLimit=10000):
         self.observableFuncName = observableFuncName
         self.recording = observableFuncName is not None
-        self.recordWhileWarming = recordWhileWarming if self.recording else False
+
 
         self.historyLimit = historyLimit
         self.history = np.zeros(historyLimit)
         self.historyCount = 0
         self.historyLimitReached = False
 
-    def recordObservable(self, Action, value=None):
+
+        self.observables = {
+                "phi4": lambda simulation: self.expectation(simulation, func=lambda x: x**4),
+                "phi2": lambda simulation: self.expectation(simulation, func=lambda x: x**2),
+                "action": lambda simulation: simulation.action.findAction(simulation),
+                "phiBar": lambda simulation: self.expectation(simulation, None),  # Default expectation
+                "energy": lambda simulation: simulation.action.findAction(simulation),
+                "empty": lambda: 0,
+            }
+
+    def expectation(self, simulation, func=None):
+        # If func is None, use identity
+        lattice = simulation.lattice
+        workingLattice = simulation.workingLattice
+        Ntot = simulation.Ntot
+
+        if func is None:
+            func = lambda x: x
+
+        M = 0
+        for n in range(Ntot):
+            M += func(workingLattice[n])
+
+        return M / lattice.Ntot
+    
+    def computeObservable(self, simulation, name):
+        lattice = simulation.lattice
+        workingLattice = simulation.workingLattice
+
+        try:
+            func = self.observables[name]
+        except KeyError:
+            raise ValueError(f"Unknown observable: {name}")
+        return func(simulation)
+
+
+    def recordObservable(self, simulation, value=None):
         if value is None:
             if self.observableFuncName is not None:
                 try:
-                    value = Action.computeObservable(self.observableFuncName)
+                    value = self.computeObservable(simulation, self.observableFuncName)
                 except AttributeError:
                     raise AttributeError(f"Action class must implement 'computeObservable(name)' method.")
             else:

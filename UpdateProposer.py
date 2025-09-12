@@ -52,11 +52,13 @@ class VAEProposer(UpdateProposer):
         return accepted
 
 
-class heatbathProposer(UpdateProposer):
+class HeatbathProposer(UpdateProposer):
     def __init__(self, beta=1.0,shuffle=False):
         self.beta = beta
 
         m = 1
+
+        self.shuffle = shuffle
 
         # Lazy initialization
         self.setupComplete = False
@@ -69,15 +71,52 @@ class heatbathProposer(UpdateProposer):
         self.addressList = np.random.permutation(self.addressList)
 
     def updateCycle(self, simulation):
+
+        if not self.setupComplete:
+            self.simulation = simulation
+            self.Ntot = simulation.lattice.Ntot
+            self.addressList = np.arange(self.Ntot)
+            self.setupComplete = True
+
+
         if self.shuffle and self.addressList is not None:
             self.shuffleList()
 
+        old = simulation.workingLattice.copy()
 
-        for i in range(self.Ntot):
+
+        Ntot = simulation.lattice.Ntot
+        for i in range(Ntot):
             n = self.addressList[i]
-            self.update(simulation, site=n)
+            self.update(simulation, site=n,old=old)
 
-    def update(self, simulation, site = None):
+    def update(self, simulation, site=None,old=None):
+        if not self.setupComplete:
+            self.simulation = simulation
+            self.Ntot = simulation.lattice.Ntot
+            self.addressList = np.arange(self.Ntot)
+            self.setupComplete = True
+
+        n = site
+        m = self.simulation.action.m
+        dim = self.simulation.lattice.dim
+        A = 0.5*m**2 + dim                 # same A as you used
+
+        B= self.simulation.action.sumNeighbours(self.simulation, n, overrideLattice = old, forwardOnly = True )  # should be plain sum of neighbor phi
+
+        # Correct mean and stddev for conditional Gaussian:
+        mean = B / (2*A)
+        stddev = math.sqrt(1.0 / (2*self.beta * A))
+
+        # draw new value (use python's random or numpy; here keeping random.gauss)
+        new_value = r.gauss(mean, stddev)
+
+        # unconditional set for heatbath
+        self.simulation.workingLattice[n] = new_value
+
+
+
+    def update2(self, simulation, site = None):
         
         if not self.setupComplete:
             self.simulation = simulation
@@ -95,7 +134,7 @@ class heatbathProposer(UpdateProposer):
 
         A = m**2 + 2*dim
 
-        neighbourSum = self.simulation.action.neighborSum(self.simulation.lattice, self.simulation.workingLattice, n)
+        neighbourSum = self.simulation.action.sumNeighbours(self.simulation, n)
 
         B = neighbourSum * self.simulation.workingLattice[site]
 
@@ -106,9 +145,10 @@ class heatbathProposer(UpdateProposer):
 
 
 class MetropolisProposer(UpdateProposer):
-    def __init__(self, dMax, beta=1.0):
+    def __init__(self, dMax, beta=1.0, shuffle=False):
         self.dMax = dMax
         self.beta = beta
+        self.shuffle = shuffle
         # Lazy initialization
         self.setupComplete = False
         self.Ntot = None
@@ -118,6 +158,12 @@ class MetropolisProposer(UpdateProposer):
         self.addressList = np.random.permutation(self.addressList)
 
     def updateCycle(self, simulation):
+        if not self.setupComplete:
+            self.simulation = simulation
+            self.Ntot = simulation.lattice.Ntot
+            self.addressList = np.arange(self.Ntot)
+            self.setupComplete = True
+        
         if self.shuffle and self.addressList is not None:
             self.shuffleList()
 
@@ -131,12 +177,6 @@ class MetropolisProposer(UpdateProposer):
 
     def update(self, simulation, site = None):
 
-        if not self.setupComplete:
-            self.simulation = simulation
-            self.Ntot = simulation.lattice.Ntot
-            self.addressList = np.arange(self.Ntot)
-            self.setupComplete = True
-
 
 
         n = site
@@ -144,11 +184,9 @@ class MetropolisProposer(UpdateProposer):
 
         d = r.gauss(0,self.dMax)
 
-        simAction = simulation.action
-        simLattice = simulation.lattice
 
         #dS = simAction.actionChange(simLattice, simulation.workingLattice, n,d)
-        dS = simAction.actionChange2(simLattice, simulation.workingLattice, n,d)
+        dS = simulation.action.actionChange2(simulation, n,d)
 
         boltFactor = np.exp(-dS*self.beta)
 
@@ -176,13 +214,24 @@ class MetropolisProposer(UpdateProposer):
 
 
 
+class DummyProposer(UpdateProposer):
+    def __init__(self, dMax=1.0, beta=1.0):
+
+        self.dMax = dMax
+        self.beta = beta
+
+    def updateCycle(self, simulation,site=None):
+        self.update(simulation)
+
+    def update(self, simulation, site=None):
+        pass
+
 
 
 
 
 
 '''
-
 
     def metroUpdate(self,n):
 
