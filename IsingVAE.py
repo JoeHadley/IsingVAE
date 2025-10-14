@@ -1,5 +1,5 @@
 from header import *
-
+#Here's the test
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = VAE(device=device).to(device)
 
