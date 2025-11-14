@@ -54,8 +54,8 @@ class Simulation:
 
 
 
-dim = 2
-sideLength = 10
+dim = 1
+sideLength = 3
 latdims = np.array([sideLength] * dim)
 
 my_lattice = SquareND(latdims, shuffle=True)
@@ -69,14 +69,15 @@ latent_dim = 1  # Example latent dimension
 
 
 beta = 5.0
-my_proposer = HeatbathProposer(beta=beta)
-my_proposer2 = MetropolisProposer(dMax=1, beta=beta, shuffle=True)
+my_proposer = ToyMVAEProposer()
 
-my_observer = Observer(observableFuncName="energy", historyLimit=10000)
+#my_proposer2 = MetropolisProposer(dMax=1, beta=beta, shuffle=True)
+
+my_observer = Observer(observableFuncName= "phiBar", historyLimit=10000)
 
 
 simulation = Simulation(beta, my_lattice, my_action, my_proposer, my_observer,warmCycles=100)
-simulation.updateCycles(cycles=10000)
+simulation.updateCycles(cycles=100)
 print("Here's the history of the observable:")
 print(simulation.observer.returnHistory())
 

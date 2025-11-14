@@ -7,6 +7,7 @@ import torch
 import base64
 
 
+
 class UpdateProposer(ABC):
 
 
@@ -51,6 +52,89 @@ class VAEProposer(UpdateProposer):
 
         return accepted
 
+class ModVAEProposer(UpdateProposer):
+    def __init__(self,input_dim, hidden_dim, latent_dim, device='cpu', beta=1.0):
+        self.VAE = VAE(input_dim, hidden_dim, latent_dim, device, beta)  # Example parameters
+
+    def update(self, simulation, site=None):
+
+        input_phi = simulation.lattice.lat  # Get the current field value at the site
+
+        #make the input a tensor if it is not already
+        if not isinstance(input_phi, torch.Tensor):
+            input_phi = torch.tensor(input_phi, dtype=torch.float32)
+
+
+        output_phi, log_alpha = self.VAE.runLoop(input_phi)  # Run the VAE to get the proposed new field value
+        #acceptance_prob = self.VAE.compute_acceptance_probability(input_phi, output_phi)  # Compute acceptance probability
+
+        output_phi = output_phi.detach().numpy()  # Convert output to numpy array
+
+        acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
+
+        # Generate a random number to decide acceptance
+        roll = r.uniform(0, 1)
+        accepted = roll < acceptance_prob
+
+        if accepted:
+            simulation.workingLattice = output_phi  # Update the lattice with the new field value
+
+        return accepted
+
+# Mimics the MVAE structure using analytical f(z,phi) instead of a neural network
+class ToyMVAEProposer(UpdateProposer):
+  def __init__(self):
+    self.shuffle = True
+    # Lazy initialization
+    self.setupComplete = False
+    self.Ntot = None
+    self.addressList = None
+  
+  def shuffleList(self):
+    self.addressList = np.random.permutation(self.addressList)
+
+
+  def updateCycle(self, simulation):
+    if not self.setupComplete:
+      self.simulation = simulation
+      self.Ntot = simulation.lattice.Ntot
+      self.addressList = np.arange(self.Ntot)
+      self.shuffleList()
+      self.setupComplete = True
+        
+    if self.shuffle and self.addressList is not None:
+      self.shuffleList()
+
+
+    for i in range(self.Ntot):
+      n = self.addressList[i]
+      self.update(simulation, site=n)
+  
+  def update(self, simulation, site=None):
+
+    # Get mass and dimension
+    m = simulation.action.m
+    dim = simulation.lattice.dim
+
+    # Compute A
+    A = 1/(2*dim+m**2)
+
+    # Assumed to be a 3-site ring
+    input_phi = simulation.workingLattice.copy()
+
+    # Sample unit gaussian for z
+    z = r.gauss(0,1)
+    
+    neighbourSum = 0
+    for i in range(dim):
+      neighbourSum += input_phi[simulation.lattice.shift(site, i, 1)]
+      neighbourSum += input_phi[simulation.lattice.shift(site, i, -1)]
+    
+    output_phi = A*(neighbourSum) + (A)**0.5 * z
+    print(f"Site {site}: input_phi = {input_phi[site]}, output_phi = {output_phi}")
+    # This should be exact, so acceptance prob = 1
+
+    self.simulation.workingLattice[site] = output_phi
 
 class HeatbathProposer(UpdateProposer):
     def __init__(self, beta=1.0,shuffle=False):
@@ -108,7 +192,7 @@ class HeatbathProposer(UpdateProposer):
         mean = B / (2*A)
         stddev = math.sqrt(1.0 / (2*self.beta * A))
 
-        # draw new value (use python's random or numpy; here keeping random.gauss)
+        # draw new value
         new_value = r.gauss(mean, stddev)
 
         # unconditional set for heatbath
