@@ -26,6 +26,37 @@ class UpdateProposer(ABC):
 class VAEProposer(UpdateProposer):
     def __init__(self,input_dim, hidden_dim, latent_dim, device='cpu', beta=1.0):
         self.VAE = VAE(input_dim, hidden_dim, latent_dim, device, beta)  # Example parameters
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
+        self.latent_dim = latent_dim
+
+
+def createWindow(simulation, site, window_size):
+        # Same dimensions as wider lattice
+    latdims = simulation.lattice.latdims
+    dim = len(latdims)
+
+
+    ntot = window_size**dim
+    new_array = np.zeros(ntot)
+
+    for i in range(ntot):
+        number = np.base_repr(i, base=window_size).zfill(dim)
+        moving_index = site
+        for d in range(dim):
+            
+            digit = int(number[d])
+            moving_index = simulation.lattice.shift(moving_index,d , digit)
+
+        new_array[i] = simulation.workingLattice[moving_index]
+        
+    
+    return new_array
+
+
+
+    def updateCycle(self, simulation,site=None):
+        pass
 
     def update(self, simulation, site=None):
 
@@ -83,7 +114,8 @@ class ModVAEProposer(UpdateProposer):
 
 # Mimics the MVAE structure using analytical f(z,phi) instead of a neural network
 class ToyMVAEProposer(UpdateProposer):
-  def __init__(self):
+  def __init__(self, beta=1.0,shuffle=False):
+    self.beta = beta
     self.shuffle = True
     # Lazy initialization
     self.setupComplete = False
@@ -112,26 +144,25 @@ class ToyMVAEProposer(UpdateProposer):
   
   def update(self, simulation, site=None):
 
-    # Get mass and dimension
+    # Set up parameters
     m = simulation.action.m
     dim = simulation.lattice.dim
-
-    # Compute A
-    A = 1/(2*dim+m**2)
-
-    # Assumed to be a 3-site ring
     input_phi = simulation.workingLattice.copy()
-
-    # Sample unit gaussian for z
-    z = r.gauss(0,1)
     
     neighbourSum = 0
     for i in range(dim):
       neighbourSum += input_phi[simulation.lattice.shift(site, i, 1)]
       neighbourSum += input_phi[simulation.lattice.shift(site, i, -1)]
     
-    output_phi = A*(neighbourSum) + (A)**0.5 * z
-    print(f"Site {site}: input_phi = {input_phi[site]}, output_phi = {output_phi}")
+    meanHB =           (neighbourSum)/          (2*(dim+ m**2/2))
+    sigmaHB =        (1             /(self.beta*2*(dim +m**2/2)))**0.5
+    
+    # Sample unit gaussian for z
+    z = r.gauss(0,1)
+
+
+    output_phi = meanHB + sigmaHB*z
+    # print(f"Site {site}: input_phi = {input_phi[site]}, output_phi = {output_phi}")
     # This should be exact, so acceptance prob = 1
 
     self.simulation.workingLattice[site] = output_phi
@@ -140,7 +171,6 @@ class HeatbathProposer(UpdateProposer):
     def __init__(self, beta=1.0,shuffle=False):
         self.beta = beta
 
-        m = 1
 
         self.shuffle = shuffle
 
@@ -166,13 +196,11 @@ class HeatbathProposer(UpdateProposer):
         if self.shuffle and self.addressList is not None:
             self.shuffleList()
 
-        old = simulation.workingLattice.copy()
-
 
         Ntot = simulation.lattice.Ntot
         for i in range(Ntot):
             n = self.addressList[i]
-            self.update(simulation, site=n,old=old)
+            self.update(simulation, site=n)
 
     def update(self, simulation, site=None,old=None):
         if not self.setupComplete:
@@ -184,9 +212,8 @@ class HeatbathProposer(UpdateProposer):
         n = site
         m = self.simulation.action.m
         dim = self.simulation.lattice.dim
-        A = 0.5*m**2 + dim                 # same A as you used
-
-        B= self.simulation.action.sumNeighbours(self.simulation, n, overrideLattice = old, forwardOnly = True )  # should be plain sum of neighbor phi
+        A = 0.5*m**2 + dim
+        B= self.simulation.action.sumNeighbours(self.simulation, n )  # should be plain sum of neighbor phi
 
         # Correct mean and stddev for conditional Gaussian:
         mean = B / (2*A)
@@ -200,7 +227,7 @@ class HeatbathProposer(UpdateProposer):
 
 
 
-    def update2(self, simulation, site = None):
+    def update2(self, simulation, site = None,old=None):
         
         if not self.setupComplete:
             self.simulation = simulation
@@ -314,82 +341,6 @@ class DummyProposer(UpdateProposer):
 
 
 
-
-'''
-
-    def metroUpdate(self,n):
-
-
-
-        d = r.gauss(0,self.dMax)
-
-        
-
-        dS = self.actionChange(n,d)
-
-        boltFactor = np.exp(-dS)
-
-        p = min(1,boltFactor)
-
-        roll = r.uniform(0,1)
-
-
-        # Apply previous move to previousLat
-        self.previousLat[int(self.previousMove[0])] += self.previousMove[1]
-
-        # Apply this move to current lattice
-
-        update = 0
-        if roll <= p:
-            update = d
-
-        self.lat[n] += update
-        self.previousMove[0] = n
-        self.previousMove[1] = update # Is sometimes 0  
-            #self.previousMove[0] = True
-
-
-        
-        
-
-        if self.recording and (not self.warming or self.recordWhileWarming) and not self.historyLimitReached:
-
-            self.recordObservable()
-
-    def update(self, n):
-        if self.proposer is None:
-            raise ValueError("No update proposer is set.")
-        
-        accepted, d, dS = self.proposer.update(n, self)
-
-        if self.recording and (not self.warming or self.recordWhileWarming) and not self.historyLimitReached:
-            self.recordObservable()
-
-        return accepted
-
-    
-    def metroCycle(self):
-        if self.shuffle:
-            self.shuffleList()
-
-
-        for i in range(self.Ntot):
-            n = self.addressList[i]
-            self.metroUpdate(n)
-
-
-    def updateCycle(self):
-        self.proposer.updateCycle(self)
-
-    def metroCycles(self,cycles):
-        for c in range(cycles):
-            self.metroCycle()
-
-    def updateCycles(self,cycles):
-        for c in range(cycles):
-            self.updateCycle()
-
-'''
 
 
 

@@ -34,7 +34,7 @@ class Simulation:
     
     def updateCycles(self,cycles,warmingFlag=False):
         for c in range(cycles):
-            print(f"Running cycle {c+1}/{cycles}")
+            #print(f"Running cycle {c+1}/{cycles}")
            
             self.updateCycle(warmingFlag)
     

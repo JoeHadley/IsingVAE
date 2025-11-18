@@ -11,45 +11,63 @@ from Simulation import Simulation
 
 
 
-
-dim = 1
+dim = 3
 sideLength = 3
 latdims = np.array([sideLength] * dim)
-
 my_lattice = SquareND(latdims, shuffle=True)
-my_action = Action(m=1, l=0)
-my_action.printParams()
-#my_proposer = MetropolisProposer(dMax=1, beta=5)
 
-input_dim = 3  # Example input dimension
-hidden_dim = 2  # Example hidden dimension
-latent_dim = 1  # Example latent dimension
-
-
-beta = 5.0
-my_proposer = ToyMVAEProposer()
-
-#my_proposer2 = MetropolisProposer(dMax=1, beta=beta, shuffle=True)
-
-my_observer = Observer(observableFuncName= "phiBar", historyLimit=10000)
+my_simulation = Simulation(
+    beta=1.0,
+    MyLattice=my_lattice,
+    MyAction=Action(m=1.0),
+    MyUpdateProposer=HeatbathProposer(beta=1.0, shuffle=True),
+    warmCycles=0
+)
 
 
-simulation = Simulation(beta, my_lattice, my_action, my_proposer, my_observer,warmCycles=100)
-simulation.updateCycles(cycles=100)
-print("Here's the history of the observable:")
-print(simulation.observer.returnHistory())
+init_config = np.arange(my_lattice.Ntot)
+print(init_config.reshape(latdims))
 
 
+def createWindow(simulation, site, window_size):
+        # Same dimensions as wider lattice
+    latdims = simulation.lattice.latdims
+    dim = len(latdims)
+
+    Ntot = simulation.lattice.Ntot
+    ntot = window_size**dim
+    new_array = np.zeros(ntot)
+
+    for i in range(ntot):
+        number = np.base_repr(i, base=window_size).zfill(dim)
+        moving_index = site
+        for d in range(dim):
+            
+            digit = int(number[d])
+            moving_index = simulation.lattice.shift(moving_index,d , digit)
+
+        new_array[i] = init_config[moving_index]
+        
+    
+    return new_array
+
+workingDimension = [3,2,1,0]
+
+#    for k in range(window_size):
+#        kWorkingDimension = 3
+#        k_site = simulation.lattice.shift(site, dim-kWorkingDimension,k)
+#        k_digit = k*window_size**(kWorkingDimension-1)
 
 
-energies = simulation.observer.returnHistory()
-Ntot = simulation.Ntot  # or number of lattice sites, depending on your definition
+#        for j in range(window_size):
+#            jWorkingDimension = kWorkingDimension - 1
+#            j_site = simulation.lattice.shift(site, dim-jWorkingDimension,j)
+#            j_digit = j*window_size**(jWorkingDimension-1)
+#            for i in range(window_size):
+#                i_digit = i*window_size**0
+#                new_array[k_digit+j_digit+i_digit] = simulation.lattice.shift(j_site, 2,i)
+    
 
-
-# Histogram of energies
-import matplotlib.pyplot as plt
-plt.hist(energies, bins=30)
-plt.xlabel('Energy')
-plt.ylabel('Probability Density')
-plt.title('Histogram of Energy Measurements')
-plt.show()
+window = createWindow( my_simulation, site=5, window_size=2)
+print("Created window:")
+print(window)
