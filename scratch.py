@@ -10,51 +10,34 @@ from Action import Action
 from Observer import Observer
 
 
-def test_toymvae_site_distribution(proposer, lattice_size=10, cycles=100000, beta=1.0, m=1.0, dim=1):
-    """
-    Test ToyMVAEProposer per-site distribution vs theoretical Gaussian.
-    """
+class Lattice2:
 
-    # Create a simple working lattice
-    workingLattice = np.zeros(lattice_size)
 
-    # Function to shift site with periodic boundary conditions
-    def shift(site, i, direction):
-        return (site + direction) % lattice_size
+def shift2(self, site, dim, jump):
+    stride = int(self.vec[dim+1])    # size of next dimension in flat indexing
+    size   = int(self.latdims[dim])  # number of sites in this dimension
 
-    # Store sampled values for a single site
-    site_index = 0
-    samples = []
+    # extract coordinate in this dimension
+    coord = (site // stride) % size
 
-    for _ in range(cycles):
-        # Compute neighbor sum
-        neighbourSum = 0
-        for d in range(dim):
-            neighbourSum += workingLattice[shift(site_index, d, 1)]
-            neighbourSum += workingLattice[shift(site_index, d, -1)]
+    # shift with periodic boundaries
+    coord = (coord + jump) % size
 
-        # Conditional mean and stddev (same as in ToyMVAE)
-        A = dim + 0.5*m**2
-        meanHB = neighbourSum / (2*A)
-        sigmaHB = math.sqrt(1/(2*beta*A))
+    # put back into flat index
+    new_site = site - (site // stride % size) * stride + coord * stride
+    return new_site
 
-        # Sample site
-        z = r.gauss(0,1)
-        workingLattice[site_index] = meanHB + sigmaHB*z
 
-        samples.append(workingLattice[site_index])
+vec = np.ones(dim + 1)*Ntot
 
-    samples = np.array(samples)
-    sample_mean = np.mean(samples)
-    sample_var = np.var(samples)
+for v in range(dim):
+    vec[v+1] = vec[v]/latdims[v]
 
-    theoretical_var = 1/(2*beta*A)
 
-    print("ToyMVAE per-site distribution test:")
-    print(f"Sampled mean: {sample_mean:.5f}")
-    print(f"Sampled variance: {sample_var:.5f}")
-    print(f"Theoretical variance: {theoretical_var:.5f}")
-    print(f"Variance ratio (sample/theory): {sample_var/theoretical_var:.3f}")
+def shift(self,site,dim,jump):
 
-# Example usage
-test_toymvae_site_distribution(None, lattice_size=3, cycles=100000, beta=1.0, m=1.0, dim=1)
+
+
+    shiftedSite = int(self.vec[dim]* (site //self.vec[dim]) + (site + jump * self.vec[dim+1] + self.Ntot) % (self.vec[dim]))
+    return shiftedSite
+

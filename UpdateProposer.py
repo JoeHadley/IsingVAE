@@ -15,63 +15,53 @@ class UpdateProposer(ABC):
     @abstractmethod
     def update(self, simulation ,site = None):
         """
-        Executes a single Monte Carlo update at `site` on the given `lattice`.
-        Must update lattice.lat[site] in-place if accepted.
-        Returns (accepted: bool, delta: float, dS: float)
+        Replaced by subclasses
         """
         pass
 
 
 
 class VAEProposer(UpdateProposer):
-    def __init__(self,input_dim, hidden_dim, latent_dim, device='cpu', beta=1.0):
-        self.VAE = VAE(input_dim, hidden_dim, latent_dim, device, beta)  # Example parameters
-        self.input_dim = input_dim
+    def __init__(self,lattice_dim, window_size, latent_dim, batch_size=None, device='cpu', beta=1.0):
+
+        self.window_size = window_size
+        self.lattice_dim = lattice_dim
+        self.batch_size = batch_size if batch_size is not None else self.Ntot
+        self.input_dim = window_size**lattice_dim
+
+
+
+        # Nearest power of 2 to input_dim/2
+        hidden_dim = int(2**(round(math.log2(self.input_dim/2))))
+
+
+
+
+        self.VAE = VAE(self.input_dim, hidden_dim, latent_dim, device, beta, lr=1e-3)  # Example parameters
+        self.input_dim = self.input_dim
         self.hidden_dim = hidden_dim
         self.latent_dim = latent_dim
 
 
-def createWindow(simulation, site, window_size):
-        # Same dimensions as wider lattice
-    latdims = simulation.lattice.latdims
-    dim = len(latdims)
+    def updateCycle(self, simulation,learning=False,site=None):
+        for i in range(self.batch_size):
+            self.update(simulation, site,learning)
+
+    def update(self, simulation, site,learning=False):
 
 
-    ntot = window_size**dim
-    new_array = np.zeros(ntot)
-
-    for i in range(ntot):
-        number = np.base_repr(i, base=window_size).zfill(dim)
-        moving_index = site
-        for d in range(dim):
-            
-            digit = int(number[d])
-            moving_index = simulation.lattice.shift(moving_index,d , digit)
-
-        new_array[i] = simulation.workingLattice[moving_index]
-        
-    
-    return new_array
-
-
-
-    def updateCycle(self, simulation,site=None):
-        pass
-
-    def update(self, simulation, site=None):
-
-        input_phi = simulation.lattice.lat  # Get the current field value at the site
+        input_phi, window_dims = simulation.lattice.createWindow(site,self.window_size)
 
         #make the input a tensor if it is not already
         if not isinstance(input_phi, torch.Tensor):
             input_phi = torch.tensor(input_phi, dtype=torch.float32)
 
 
-        output_phi, log_alpha = self.VAE.runLoop(input_phi)  # Run the VAE to get the proposed new field value
+        output_phi, log_alpha = self.VAE.runLoop(input_phi,learning)  # Run the VAE to get the proposed new field value
+
         #acceptance_prob = self.VAE.compute_acceptance_probability(input_phi, output_phi)  # Compute acceptance probability
 
         output_phi = output_phi.detach().numpy()  # Convert output to numpy array
-
         acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
 
         # Generate a random number to decide acceptance
@@ -83,7 +73,7 @@ def createWindow(simulation, site, window_size):
 
         return accepted
 
-class ModVAEProposer(UpdateProposer):
+class MVAEProposer(UpdateProposer):
     def __init__(self,input_dim, hidden_dim, latent_dim, device='cpu', beta=1.0):
         self.VAE = VAE(input_dim, hidden_dim, latent_dim, device, beta)  # Example parameters
 
@@ -254,7 +244,6 @@ class HeatbathProposer(UpdateProposer):
         
         self.simulation.workingLattice[n] = new_value
 
-
 class MetropolisProposer(UpdateProposer):
     def __init__(self, dMax, beta=1.0, shuffle=False):
         self.dMax = dMax
@@ -286,42 +275,20 @@ class MetropolisProposer(UpdateProposer):
     def printParams(self):
         print(f"Metropolis Proposer parameters: dMax = {self.dMax}, beta = {self.beta}")
 
-    def update(self, simulation, site = None):
-
-
-
-        n = site
-
+    def update(self, simulation, site):
 
         d = r.gauss(0,self.dMax)
-
-
-        #dS = simAction.actionChange(simLattice, simulation.workingLattice, n,d)
-        dS = simulation.action.actionChange2(simulation, n,d)
+        dS = simulation.action.actionChange(simulation, site,d)
 
         boltFactor = np.exp(-dS*self.beta)
 
-        p = min(1,boltFactor)
-
         roll = r.uniform(0,1)
 
-        
-        accepted = roll <= p
+        accepted = roll <= boltFactor
         
         if accepted:
-            simulation.workingLattice[n] += d
+            simulation.workingLattice[site] += d
         
-
-
-        
-        
-
-        #if self.recording and (not self.warming or self.recordWhileWarming) and not self.historyLimitReached:
-
-        #    self.recordObservable()
-
-
-
 
 
 

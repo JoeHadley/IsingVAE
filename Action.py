@@ -40,19 +40,7 @@ class Action:
 
 
         
-    def actionChange2(self, simulation, address,d):
-        lattice = simulation.lattice
-        workingLattice = simulation.workingLattice
 
-
-        #directly calculate the change in action for a given site and displacement
-        OldAction = self.findAction(simulation)  # Current action value
-
-        #Copy the working lattice to avoid modifying it directly
-        trial = workingLattice.copy()
-        trial[address] += d
-        NewAction = self.findAction(simulation,overrideWorkingLattice=trial )  # Action value after the change
-        return NewAction - OldAction
 
     def sumNeighbours(self, simulation, site,overrideLattice=None,forwardOnly=False):
         
@@ -97,6 +85,20 @@ class Action:
         + d*d*d*d/24 )
 
         return dS +dSl
+    
+    def actionChangeLong(self, simulation, address,d):
+        lattice = simulation.lattice
+        workingLattice = simulation.workingLattice
+
+
+        #directly calculate the change in action for a given site and displacement
+        OldAction = self.findAction(simulation)  # Current action value
+
+        #Copy the working lattice to avoid modifying it directly
+        trial = workingLattice.copy()
+        trial[address] += d
+        NewAction = self.findAction(simulation,overrideWorkingLattice=trial )  # Action value after the change
+        return NewAction - OldAction
     
 
 

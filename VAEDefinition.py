@@ -13,7 +13,7 @@ from torchvision.utils import save_image, make_grid
 
 
 class VAE(nn.Module):
-    def __init__(self, input_dim=100, hidden_dim=50, latent_dim=3, device='cpu',beta=1.0,lr=1e-3):
+    def __init__(self, input_dim, hidden_dim, latent_dim, device='cpu',beta=1.0,lr=1e-3):
         super(VAE, self).__init__()
         self.device = device   
         self.beta = beta
