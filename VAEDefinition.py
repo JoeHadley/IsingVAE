@@ -13,14 +13,16 @@ from torchvision.utils import save_image, make_grid
 
 
 class VAE(nn.Module):
-    def __init__(self, input_dim, hidden_dim, latent_dim, device='cpu',beta=1.0,lr=1e-3):
+    def __init__(self, input_dim, hidden_dim, latent_dim, double_input = False, device='cpu',beta=1.0,lr=1e-3):
         super(VAE, self).__init__()
         self.device = device   
         self.beta = beta
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.latent_dim = latent_dim
+        self.double_input = double_input
         
+
         
 
         # Encoder
@@ -36,14 +38,23 @@ class VAE(nn.Module):
         self.mean_layer = nn.Linear(latent_dim, latent_dim)
         self.logvar_layer = nn.Linear(latent_dim, latent_dim)
 
-        # Decoder
-        self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, hidden_dim),
-            nn.LeakyReLU(0.2),
-            nn.Linear(hidden_dim, input_dim)
-        )
+        
+        
+        # Decoder - Option to modify
+        if self.double_input:
+
+            self.decoder = nn.Sequential(
+                nn.Linear(latent_dim + input_dim, hidden_dim),
+                nn.LeakyReLU(0.2),
+                nn.Linear(hidden_dim, input_dim)
+            )
+        else:
+            self.decoder = nn.Sequential(
+                nn.Linear(latent_dim, hidden_dim),
+                nn.LeakyReLU(0.2),
+                nn.Linear(hidden_dim, input_dim)
+            )
         # Output sigmoid removed
-        #TODO Investigate best stack of layers
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
@@ -59,9 +70,14 @@ class VAE(nn.Module):
         z = mean + std * epsilon  # Reparameterization trick
         return z
 
-    def decode(self, z):
-        return self.decoder(z)
+    def decode(self, z, input_phi=None):
 
+        if self.double_input:
+            # Concatenate z with original input
+            decoder_input = torch.cat((z, input_phi ), dim=-1)
+        else:
+            decoder_input = z
+        return self.decoder(decoder_input)
 
   
 
@@ -203,10 +219,23 @@ class VAE(nn.Module):
         acceptance_prob = torch.exp(log_alpha).clamp(max=1.0)
         return acceptance_prob.item()  # Return as a scalar value
 
+
+
     def forward(self,phi):
         mean, logvar = self.encode(phi)
-        z = self.reparameterization(mean, logvar)
-        return self.decode(z)
+
+        zF = self.reparameterization(mean, logvar)
+
+
+        phi2 = self.decode(zF, phi)
+        
+        zB_mean, _ = self.encode(phi2)
+        zB = zB_mean
+        phi3 = self.decode(zB, phi2)  # Reconstructed output from inverse z
+
+
+        log_alpha = self.compute_log_alpha(phi, phi2, zF, zB)
+        return phi2, log_alpha
 
     
     def compute_log_alpha(self, input_phi, output_phi, zF, zB):
@@ -234,43 +263,31 @@ class VAE(nn.Module):
         return log_alpha
 
     
-    def runLoop(self, phi): # phi is the input tensor
+    def runLoop(self, phi, learning): # phi is the input tensor
         """
         Run a forward pass through the VAE and train.
         :param phi: Input tensor
         :return: Reconstructed output, mean, and log variance
         """
 
-        mean, logvar = self.encode(phi)
-
-        zF = self.reparameterization(mean, logvar)
-        phi2 = self.decode(zF)  # Reconstructed output
-
-        zB_mean, _ = self.encode(phi2)
-        zB = zB_mean
-        phi3 = self.decode(zB)  # Reconstructed output from inverse z
-        # Will remain to be seen if phi3 is near-equal to phi, may need to adjust loss to insist on this
-
-
-
-        log_alpha = self.compute_log_alpha(phi, phi2, zF, zB)
-
-
-
+        phi2, log_alpha = self.forward(phi)
 
         # MH Loss (maximize acceptance)
         mh_loss = log_alpha.clamp(max=0)
-
         # KL loss (like VAE)
         kl_loss = self.computeKLLoss(phi, phi2, mu0=0, sigma0=1, sigma_y=1, forward_model=self.decoder)
-
-
         # Total loss
         loss = mh_loss + self.beta * kl_loss
-        loss.backward()
+
+        if learning:
+            
 
 
-        self.optimizer.step()
+
+            loss.backward()
+            self.optimizer.step()
+
+
 
         return phi2, log_alpha
 
@@ -279,5 +296,5 @@ myVAE = VAE(input_dim=3, hidden_dim=2, latent_dim=1, device='cpu', beta=1.0)
 
 # Assuming you have some input tensor `phi`
 phi = torch.randn(3)  # Example input tensor
-myVAE.runLoop(phi)
+myVAE.runLoop(phi, learning=False)
 

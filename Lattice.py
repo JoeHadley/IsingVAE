@@ -137,7 +137,7 @@ class SquareND(Lattice):
         out = np.zeros(ntot)
 
 
-        
+
         for idx in range(ntot): 
 
             offset = idx
@@ -167,19 +167,3 @@ class SquareND(Lattice):
 #        return new_array, window_dims
 
 
-latdims = np.array([3,3,3])
-
-#for dim in range(1,5):
-
-dim = 3
-
-lat = SquareND(np.array(latdims))
-lat.testMode()
-lat.show()
-
-print(lat.stride)
-print(lat.vec)
-window , window_dims = lat.createWindow(site=7, window_size=2)
-
-show_window = np.reshape(window,window_dims)
-print(show_window)

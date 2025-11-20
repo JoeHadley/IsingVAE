@@ -22,13 +22,18 @@ class UpdateProposer(ABC):
 
 
 class VAEProposer(UpdateProposer):
-    def __init__(self,lattice_dim, window_size, latent_dim, batch_size=None, device='cpu', beta=1.0):
+    def __init__(self,lattice_dim, window_size, latent_dim, double_input =False, batch_size=None, device='cpu', beta=1.0):
 
         self.window_size = window_size
         self.lattice_dim = lattice_dim
         self.batch_size = batch_size if batch_size is not None else self.Ntot
         self.input_dim = window_size**lattice_dim
+        self.double_input = double_input
 
+        # Lazy initialization
+        self.setupComplete = False
+        self.Ntot = None
+        self.addressList = None
 
 
         # Nearest power of 2 to input_dim/2
@@ -37,15 +42,27 @@ class VAEProposer(UpdateProposer):
 
 
 
-        self.VAE = VAE(self.input_dim, hidden_dim, latent_dim, device, beta, lr=1e-3)  # Example parameters
+        self.VAE = VAE(self.input_dim, hidden_dim, latent_dim,double_input, device, beta, lr=1e-3)  # Example parameters
         self.input_dim = self.input_dim
         self.hidden_dim = hidden_dim
         self.latent_dim = latent_dim
 
 
     def updateCycle(self, simulation,learning=False,site=None):
+
+
+        if not self.setupComplete:
+            self.simulation = simulation
+            self.Ntot = simulation.lattice.Ntot
+            self.addressList = np.arange(self.Ntot)
+            self.setupComplete = True
+        
+
+
+
         for i in range(self.batch_size):
-            self.update(simulation, site,learning)
+            n = r.choice(self.addressList)
+            self.update(simulation, site=n,learning=learning)
 
     def update(self, simulation, site,learning=False):
 
