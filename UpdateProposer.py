@@ -48,7 +48,7 @@ class VAEProposer(UpdateProposer):
         self.latent_dim = latent_dim
 
 
-    def updateCycle(self, simulation,learning=False,site=None):
+    def updateCycle(self, simulation,optional_arg=None,site=None):
 
 
         if not self.setupComplete:
@@ -56,13 +56,13 @@ class VAEProposer(UpdateProposer):
             self.Ntot = simulation.lattice.Ntot
             self.addressList = np.arange(self.Ntot)
             self.setupComplete = True
-        
+            self.learning = optional_arg  # Store learning flag
 
 
 
         for i in range(self.batch_size):
             n = r.choice(self.addressList)
-            self.update(simulation, site=n,learning=learning)
+            self.update(simulation, site=n,learning=self.learning)
 
     def update(self, simulation, site,learning=False):
 

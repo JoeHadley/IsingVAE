@@ -32,16 +32,18 @@ class Simulation:
         showLat = np.reshape(self.workingLattice,self.latdims)
         print(showLat)
     
-    def updateCycles(self,cycles,warmingFlag=False):
+    def updateCycles(self,cycles,warmingFlag=False,optional_arg=None):
         for c in range(cycles):
             #print(f"Running cycle {c+1}/{cycles}")
            
-            self.updateCycle(warmingFlag)
+            self.updateCycle(warmingFlag,optional_arg)
     
-    def updateCycle(self, warmingFlag=False):
-        self.updateProposer.updateCycle(self)
+    def updateCycle(self, warmingFlag=False, optional_arg=None):
+        self.updateProposer.updateCycle(self, optional_arg)
         if not warmingFlag:
             self.observer.recordObservable(self)
+
+
 
     def initialize(self, initConfig=None):
         self.lat = self.lattice.initializeLattice(initConfig)

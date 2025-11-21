@@ -20,6 +20,7 @@ class Observer:
                 "energy": lambda simulation: simulation.action.findAction(simulation),
                 "specificHeat": lambda simulation: 0,  # Placeholder
                 "empty": lambda: 0,
+                "Correlator": lambda simulation: self.expectation(simulation, func=lambda x: x**2),  # Placeholder
             }
 
     def expectation(self, simulation, func=None):

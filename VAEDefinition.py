@@ -70,7 +70,7 @@ class VAE(nn.Module):
         z = mean + std * epsilon  # Reparameterization trick
         return z
 
-    def decode(self, z, input_phi=None):
+    def decode(self, z, input_phi):
 
         if self.double_input:
             # Concatenate z with original input
@@ -178,12 +178,12 @@ class VAE(nn.Module):
 
 
 
-    def compute_decoder_jacobian(self, input_z):
+    def compute_decoder_jacobian(self, input_z,input_phi):
         """
         Compute the Jacobian of decoder(z) ∈ ℝ³ with respect to z ∈ ℝ²
         """
         z = input_z.clone().detach().requires_grad_(True)
-        output = self.decode(z)  # output shape: (3,)
+        output = self.decode(z,input_phi)  # output shape: (3,)
         
         jacobian = []
         for i in range(output.shape[0]):
@@ -193,8 +193,8 @@ class VAE(nn.Module):
         jacobian = torch.stack(jacobian, dim=0)  # shape: (3, 2)
         return jacobian
 
-    def compute_jacobian_term(self, input_z):
-        jacobian = self.compute_decoder_jacobian(input_z)
+    def compute_jacobian_term(self, input_z,input_phi):
+        jacobian = self.compute_decoder_jacobian(input_z,input_phi)
         JTJ = jacobian.T @ jacobian  # Compute Jacobian transpose @ Jacobian
         detTerm = torch.sqrt(torch.linalg.det(JTJ))
         return detTerm
@@ -249,8 +249,8 @@ class VAE(nn.Module):
         log_q_zF = self.log_prob_q(zF, input_phi)
         log_q_zB = self.log_prob_q(zB, output_phi)
         # Jacobian magnitude (can use norm of df/dz or autodiff)
-        log_det_jF = torch.log(self.compute_jacobian_term(zF))
-        log_det_jB = torch.log(self.compute_jacobian_term(zB))
+        log_det_jF = torch.log(self.compute_jacobian_term(zF,input_phi))
+        log_det_jB = torch.log(self.compute_jacobian_term(zB,output_phi))
 
         # Log probabilities of initial and final states
         #log_p_phi = self.log_p(phi, phi, mu0=0, sigma0=1, sigma_y=1)
