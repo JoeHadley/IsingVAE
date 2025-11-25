@@ -76,9 +76,19 @@ class VAEProposer(UpdateProposer):
 
         output_phi, log_alpha = self.VAE.runLoop(input_phi,learning)  # Run the VAE to get the proposed new field value
 
+        new_lattice = simulation.lattice.insertWindow(simulation.workingLattice, output_phi.detach().numpy(), site, window_dims)
+
+        old_action = simulation.action.findAction(simulation)
+        new_action = simulation.action.findAction(simulation,overrideWorkingLattice=new_lattice)
+        dS = new_action - old_action
+        log_alpha += -simulation.beta * dS
+        
+
+        acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
+
         #acceptance_prob = self.VAE.compute_acceptance_probability(input_phi, output_phi)  # Compute acceptance probability
 
-        output_phi = output_phi.detach().numpy()  # Convert output to numpy array
+        output_phi = output_phi.detach().detach().numpy()  # Convert output to numpy array
         acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
 
         # Generate a random number to decide acceptance
@@ -86,7 +96,7 @@ class VAEProposer(UpdateProposer):
         accepted = roll < acceptance_prob
 
         if accepted:
-            simulation.workingLattice = output_phi  # Update the lattice with the new field value
+            simulation.workingLattice = new_lattice  # Update the lattice with the new field value
 
         return accepted
 

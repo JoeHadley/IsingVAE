@@ -63,3 +63,65 @@ print("detTerm from getDetTerm:", getDetTerm(torch.tensor([1.0, 2.0])))  # Examp
 print(myVAE.compute_decoder_jacobian(torch.tensor([1.0, 2.0])))  # Example input for Jacobian computation
 
 print(myVAE.jacobian_norm(torch.tensor([1.0, 2.0]), myVAE.decode))  # Example input for Jacobian norm computation
+
+
+
+
+
+
+    def compute_acceptance_probability(self, input_phi, output_phi):
+        """
+        Compute the acceptance probability for the proposed update.
+        :param input_phi: Current field value
+        :param output_phi: Proposed new field value
+        :return: Acceptance probability
+        """
+        
+
+        log_q_zF = self.log_prob_q(output_phi, input_phi)
+        log_q_zB = self.log_prob_q(input_phi, output_phi)
+        log_det_jF = torch.log(self.compute_jacobian_term(output_phi))
+        log_det_jB = torch.log(self.compute_jacobian_term(input_phi))
+        log_alpha = ( log_q_zF - log_q_zB - log_det_jF + log_det_jB
+        )
+
+        acceptance_prob = torch.exp(log_alpha).clamp(max=1.0)
+        return acceptance_prob.item()  # Return as a scalar value
+
+
+
+
+
+
+# Watch out, these may be needed again
+
+
+    def log_prior(self,phi, mu0, sigma0):
+            """Log Gaussian prior: N(mu0, sigma0^2 I)"""
+            d = phi.shape[0]
+            var0 = sigma0**2
+            diff = phi - mu0
+            log_term = torch.log(torch.tensor(2.0 * torch.pi * var0, device=diff.device))
+            logp = -0.5 * (d * log_term + (diff ** 2).sum() / var0)
+            return logp
+
+    def log_likelihood(self,phi, data, sigma_y):
+        """
+        Gaussian likelihood: p(data | phi) = N(data | g(phi), sigma_y^2 I)
+        - forward_model(phi): predicts mean of data given phi
+        """
+        
+        pred = self.forward(phi)  # Forward pass to get predictions
+
+        
+        var_y = sigma_y**2
+        diff = data - pred
+        d = data.shape[0]
+        log_term = torch.log(torch.tensor(2.0 * torch.pi * var_y, device=diff.device))
+        logl = -0.5 * (d * log_term + (diff ** 2).sum() / var_y)
+        return logl
+
+    def log_p(self,phi, data, mu0, sigma0, sigma_y):
+        """Log posterior up to constant"""
+        log_p = self.log_likelihood(phi, data, sigma_y) + self.log_prior(phi, mu0, sigma0)
+        return log_p

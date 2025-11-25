@@ -70,11 +70,13 @@ class VAE(nn.Module):
         z = mean + std * epsilon  # Reparameterization trick
         return z
 
-    def decode(self, z, input_phi):
+    def decode(self, z, input_phi=None):
+
+
 
         if self.double_input:
             # Concatenate z with original input
-            decoder_input = torch.cat((z, input_phi ), dim=-1)
+            decoder_input = torch.cat((z, self.input_phi ), dim=-1)
         else:
             decoder_input = z
         return self.decoder(decoder_input)
@@ -133,7 +135,7 @@ class VAE(nn.Module):
         :return: Loss value
         """
         # Forward pass through the VAE
-        mean, logvar = self.encode(phi)
+        mean, logvar = self.mean, self.logvar
 
         # Compute log likelihood and prior
         #log_likelihood_value = self.log_likelihood(phi, data, sigma_y, forward_model)
@@ -146,44 +148,16 @@ class VAE(nn.Module):
 
         return kl_loss
 
-    def log_prior(self,phi, mu0, sigma0):
-            """Log Gaussian prior: N(mu0, sigma0^2 I)"""
-            d = phi.shape[0]
-            var0 = sigma0**2
-            diff = phi - mu0
-            log_term = torch.log(torch.tensor(2.0 * torch.pi * var0, device=diff.device))
-            logp = -0.5 * (d * log_term + (diff ** 2).sum() / var0)
-            return logp
-
-    def log_likelihood(self,phi, data, sigma_y):
-        """
-        Gaussian likelihood: p(data | phi) = N(data | g(phi), sigma_y^2 I)
-        - forward_model(phi): predicts mean of data given phi
-        """
-        
-        pred = self.forward(phi)  # Forward pass to get predictions
-
-        
-        var_y = sigma_y**2
-        diff = data - pred
-        d = data.shape[0]
-        log_term = torch.log(torch.tensor(2.0 * torch.pi * var_y, device=diff.device))
-        logl = -0.5 * (d * log_term + (diff ** 2).sum() / var_y)
-        return logl
-
-    def log_p(self,phi, data, mu0, sigma0, sigma_y):
-        """Log posterior up to constant"""
-        log_p = self.log_likelihood(phi, data, sigma_y) + self.log_prior(phi, mu0, sigma0)
-        return log_p
 
 
 
-    def compute_decoder_jacobian(self, input_z,input_phi):
+
+    def compute_decoder_jacobian(self, input_z):
         """
         Compute the Jacobian of decoder(z) ∈ ℝ³ with respect to z ∈ ℝ²
         """
-        z = input_z.clone().detach().requires_grad_(True)
-        output = self.decode(z,input_phi)  # output shape: (3,)
+        z = input_z.detach().requires_grad_(True)
+        output = self.decode(z) 
         
         jacobian = []
         for i in range(output.shape[0]):
@@ -193,91 +167,93 @@ class VAE(nn.Module):
         jacobian = torch.stack(jacobian, dim=0)  # shape: (3, 2)
         return jacobian
 
-    def compute_jacobian_term(self, input_z,input_phi):
-        jacobian = self.compute_decoder_jacobian(input_z,input_phi)
+    def compute_jacobian_term(self, input_z):
+        jacobian = self.compute_decoder_jacobian(input_z)
         JTJ = jacobian.T @ jacobian  # Compute Jacobian transpose @ Jacobian
         detTerm = torch.sqrt(torch.linalg.det(JTJ))
         return detTerm
 
 
-    def compute_acceptance_probability(self, input_phi, output_phi):
-        """
-        Compute the acceptance probability for the proposed update.
-        :param input_phi: Current field value
-        :param output_phi: Proposed new field value
-        :return: Acceptance probability
-        """
-        
-
-        log_q_zF = self.log_prob_q(output_phi, input_phi)
-        log_q_zB = self.log_prob_q(input_phi, output_phi)
-        log_det_jF = torch.log(self.compute_jacobian_term(output_phi))
-        log_det_jB = torch.log(self.compute_jacobian_term(input_phi))
-        log_alpha = ( log_q_zF - log_q_zB - log_det_jF + log_det_jB
-        )
-
-        acceptance_prob = torch.exp(log_alpha).clamp(max=1.0)
-        return acceptance_prob.item()  # Return as a scalar value
-
-
-
-    def forward(self,phi):
-        mean, logvar = self.encode(phi)
-
-        zF = self.reparameterization(mean, logvar)
-
-
-        phi2 = self.decode(zF, phi)
-        
-        zB_mean, _ = self.encode(phi2)
-        zB = zB_mean
-        phi3 = self.decode(zB, phi2)  # Reconstructed output from inverse z
-
-
-        log_alpha = self.compute_log_alpha(phi, phi2, zF, zB)
-        return phi2, log_alpha
-
+    def compute_exponential_term(self, input_z, mean, logvar):
+        # Want sum of squares of input_z weighted by variance
+        var = torch.exp(logvar)              # variance
+        diff = input_z - mean                # z - mean
+        exp_term = 0.5 * torch.sum(diff**2 / var)
+        return torch.exp(exp_term)
     
+
     def compute_log_alpha(self, input_phi, output_phi, zF, zB):
-        """
-        Compute the log acceptance ratio for the proposed update.
-        :param input_phi: Current field value
-        :param output_phi: Proposed new field value
-        :return: Log acceptance ratio
-        """
-        # Compute proposal densities
-        log_q_zF = self.log_prob_q(zF, input_phi)
-        log_q_zB = self.log_prob_q(zB, output_phi)
-        # Jacobian magnitude (can use norm of df/dz or autodiff)
-        log_det_jF = torch.log(self.compute_jacobian_term(zF,input_phi))
-        log_det_jB = torch.log(self.compute_jacobian_term(zB,output_phi))
+      """
+      Compute the log acceptance ratio for the proposed update.
+      :param input_phi: Current field value
+      :param output_phi: Proposed new field value
+      :return: Log acceptance ratio
+      """
+      # Compute proposal densities
+      log_q_zF = self.log_prob_q(zF, input_phi)
+      log_q_zB = self.log_prob_q(zB, output_phi)
+      # Jacobian magnitude (can use norm of df/dz or autodiff)
 
-        # Log probabilities of initial and final states
-        #log_p_phi = self.log_p(phi, phi, mu0=0, sigma0=1, sigma_y=1)
-        #log_p_phi_prime = self.log_p(phi2, phi2, mu0=0, sigma0=1, sigma_y=1)
-
-        # Compute log of acceptance ratio (up to target densities)
-        log_alpha = ( log_q_zF - log_q_zB
-                     - log_det_jF + log_det_jB
-        )
-        return log_alpha
 
     
+
+
+      log_det_jF = torch.log(self.compute_jacobian_term(zF))
+      log_det_jB = torch.log(self.compute_jacobian_term(zB))
+      #TODO verify correctness of log det terms with double input
+
+
+
+      # Compute exponential factors
+      log_zSumF = torch.log(self.compute_exponential_term(zF, self.mean, self.logvar))
+      log_zSumB = torch.log(self.compute_exponential_term(zB, self.back_mean, self.back_logvar))
+
+      # Compute Sigma ratio factors
+      Sigma_ratioF = 0.5*torch.log(torch.sum(torch.exp(self.logvar)))
+      Sigma_ratioB = 0.5*torch.log(torch.sum(torch.exp(self.back_logvar)))
+
+      # Compute log of acceptance ratio (up to target densities)
+      log_alpha = (- log_det_jF + log_det_jB + log_zSumB - log_zSumF + Sigma_ratioB - Sigma_ratioF
+      )
+      return log_alpha
+
+  
     def runLoop(self, phi, learning): # phi is the input tensor
         """
         Run a forward pass through the VAE and train.
         :param phi: Input tensor
         :return: Reconstructed output, mean, and log variance
         """
+        self.input_phi = phi  # Store input for decoder if double_input is used 
+        mean, logvar = self.encode(phi)
 
-        phi2, log_alpha = self.forward(phi)
+        self.mean=mean
+        self.logvar=logvar
 
-        # MH Loss (maximize acceptance)
-        mh_loss = log_alpha.clamp(max=0)
+
+
+        zF = self.reparameterization(mean, logvar)
+        phi2 = self.decode(zF, phi)
+
+        back_mean, back_logvar  = self.encode(phi2)
+        self.back_mean=back_mean
+        self.back_logvar=back_logvar
+        zB = self.reparameterization(back_mean, back_logvar)
+
+        phi3 = self.decode(zB, phi2)
+
+
+
+
+        log_alpha = self.compute_log_alpha( phi, phi2, zF, zB)
+
+        # acceptance Loss (maximize acceptance)
+        acc_loss = log_alpha.clamp(max=0)
+        # Recon Loss (MSE)
         # KL loss (like VAE)
         kl_loss = self.computeKLLoss(phi, phi2, mu0=0, sigma0=1, sigma_y=1, forward_model=self.decoder)
         # Total loss
-        loss = mh_loss + self.beta * kl_loss
+        loss = acc_loss + self.beta * kl_loss
 
         if learning:
             
