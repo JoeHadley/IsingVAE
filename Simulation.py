@@ -54,3 +54,12 @@ class Simulation:
     def saveConfig(self, filename):
         self.ReaderWriter.writeConfig(self, filename)
 
+
+
+
+
+
+
+
+
+

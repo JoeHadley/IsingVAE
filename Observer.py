@@ -20,7 +20,7 @@ class Observer:
                 "energy": lambda simulation: simulation.action.findAction(simulation),
                 "specificHeat": lambda simulation: 0,  # Placeholder
                 "empty": lambda: 0,
-                "Correlator": lambda simulation: self.expectation(simulation, func=lambda x: x**2),  # Placeholder
+                "Correlator": lambda simulation: self.correlator(simulation)
             }
 
     def expectation(self, simulation, func=None):
@@ -36,8 +36,29 @@ class Observer:
         for n in range(Ntot):
             M += func(workingLattice[n])
 
-        return M / lattice.Ntot
-    
+        return M / simulation.Ntot
+  
+    def correlator(self, simulation):
+      """
+      Compute the nearest-neighbor correlator in an N-dimensional lattice.
+      Uses the lattice's `getNeighbours(site)` method.
+      """
+      lattice = simulation.lattice  # instance of SquareND
+      workingLattice = simulation.workingLattice
+      Ntot = simulation.Ntot
+
+      total = 0
+      z = 0
+
+      for n in range(Ntot):
+          neighbors = lattice.getNeighbours(n)  # array of neighbor indices
+          z = len(neighbors)
+          for m in neighbors:
+              total += workingLattice[n] * workingLattice[m]
+
+      # Normalize by total number of interactions
+      return total / (Ntot * z)
+
     def computeObservable(self, simulation, name):
         lattice = simulation.lattice
         workingLattice = simulation.workingLattice
@@ -71,5 +92,3 @@ class Observer:
         if self.historyLimitReached:
             print("Warning: Observable History Limit Reached")
         return self.history[:self.historyCount]
-
-

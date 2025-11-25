@@ -185,21 +185,3 @@ class SquareND(Lattice):
             new_lattice[flat] = window[idx]
         
         return new_lattice
-
-
-
-# test change
-
-T = 5
-L = 5
-latdims = np.array((T,L))
-lat = SquareND(latdims)
-lat.testMode()
-lat.show()
-
-
-
-window = np.ones((3,3))*100
-
-newLattice = lat.insertWindow(lat.lat, window.flatten(), site=6, window_dims=np.array([3,3]))
-print(newLattice)
