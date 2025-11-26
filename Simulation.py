@@ -9,12 +9,12 @@ from VAEDefinition import VAE
 from ReaderWriter import ReaderWriter
 from statFunctions import jackknife_bins, integrated_autocorr_time
 class Simulation:
-    def __init__(self, beta, MyLattice,MyAction,MyUpdateProposer,MyObserver=None,warmCycles=0):
+    def __init__(self, beta, lattice,action,updateProposer,observer=None,warmCycles=0):
         self.beta = beta
-        self.lattice = MyLattice
-        self.action = MyAction
-        self.updateProposer = MyUpdateProposer
-        self.observer = MyObserver
+        self.lattice = lattice
+        self.action = action
+        self.updateProposer = updateProposer
+        self.observer = observer
 
         self.warmCycles = warmCycles
 
@@ -36,6 +36,9 @@ class Simulation:
         for c in range(cycles):
             #print(f"Running cycle {c+1}/{cycles}")
            
+           if optional_arg is None:
+                self.updateCycle(warmingFlag)
+           else:
             self.updateCycle(warmingFlag,optional_arg)
     
     def updateCycle(self, warmingFlag=False, optional_arg=None):

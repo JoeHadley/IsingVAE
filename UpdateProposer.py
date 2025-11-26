@@ -66,6 +66,7 @@ class VAEProposer(UpdateProposer):
 
     def update(self, simulation, site,learning=False):
 
+        #print(f"VAEProposer update at site {site}, learning={learning}")  # Debug statement
 
         input_phi, window_dims = simulation.lattice.createWindow(site,self.window_size)
 
@@ -201,7 +202,7 @@ class HeatbathProposer(UpdateProposer):
     def shuffleList(self):
         self.addressList = np.random.permutation(self.addressList)
 
-    def updateCycle(self, simulation):
+    def updateCycle(self, simulation,optional_arg=None):
 
         if not self.setupComplete:
             self.simulation = simulation

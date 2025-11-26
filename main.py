@@ -11,12 +11,12 @@ from Simulation import Simulation
 
 
 
-dim = 1
+dim = 2
 sideLength = 3
 latdims = np.array([sideLength] * dim)
 myLattice = SquareND(latdims, shuffle=True)
 myAction = Action(m=1.0)
-myUpdateProposer=VAEProposer( lattice_dim=dim, window_size=3, latent_dim=1, double_input=True, batch_size=10, device='cpu', beta=1.0)
+myUpdateProposer=VAEProposer( lattice_dim=dim, window_size=2, latent_dim=1, double_input=False, batch_size=1, device='cpu', beta=1.0)
 
 my_simulation = Simulation(
     beta=1.0,
@@ -27,29 +27,17 @@ my_simulation = Simulation(
     warmCycles=0
     )
 
-print("Lattice double_input:", myUpdateProposer.double_input)
-print("Simulation double_input:", my_simulation.updateProposer.double_input)
+my_simulation.workingLattice = np.random.uniform(-1, 1, size=myLattice.Ntot)
 
+a = my_simulation.workingLattice.copy()
 
 my_simulation.showLattice()
 # Optional argument set to False to indicate we do not want to use learning
 
-
 # Learning, Double Input
-my_simulation.updateCycles(5,optional_arg=True)
-my_simulation.showLattice()
-# Not Learning, Double Input
-my_simulation.updateCycles(5,optional_arg=False)
-my_simulation.showLattice()
-
-
-myUpdateProposer.double_input = False
-# Learning, Single Input
-my_simulation.updateCycles(5,optional_arg=True)
-my_simulation.showLattice()
-# Not Learning, Single Input
-my_simulation.updateCycles(5,optional_arg=True)
-my_simulation.showLattice()
+my_simulation.updateCycles(10,optional_arg=False)
+b = my_simulation.workingLattice.copy()
 
 my_simulation.showLattice()
 
+print(np.reshape(a-b, (sideLength, sideLength)))

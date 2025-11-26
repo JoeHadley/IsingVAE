@@ -17,7 +17,6 @@ class Observer:
                 "phi2": lambda simulation: self.expectation(simulation, func=lambda x: x**2),
                 "action": lambda simulation: simulation.action.findAction(simulation),
                 "phiBar": lambda simulation: self.expectation(simulation, None),  # Default expectation
-                "energy": lambda simulation: simulation.action.findAction(simulation),
                 "specificHeat": lambda simulation: 0,  # Placeholder
                 "empty": lambda: 0,
                 "Correlator": lambda simulation: self.correlator(simulation)
