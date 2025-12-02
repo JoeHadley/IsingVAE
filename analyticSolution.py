@@ -9,8 +9,8 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 
 m = 1
-L = 10
-T = 10
+L = 14
+T = 14
 
 def comp_numerator(x1,x2,nx,t1,t2,nt):
     return np.exp(1j*2*np.pi*nx*(x2-x1)/L)*np.exp(1j*2*np.pi*nt*(t2-t1)/T)
@@ -30,10 +30,9 @@ def compAnCorr(x1,x2,t1,t2,m=1):
 
 
 
-def getAnalyticCorrelator(lattice):
+def getAnalyticCorrelator(lattice,m):
     T = lattice.latdims[0]
     L = lattice.latdims[1]
-    m = lattice.m
 
 
     filePath = "AnalyticalCorrelator"+str(T)+"x"+str(L)+".txt"
@@ -59,3 +58,5 @@ def getAnalyticCorrelator(lattice):
         np.savetxt(filePath, compResults)
 
     return compResults
+
+

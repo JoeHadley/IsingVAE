@@ -22,13 +22,14 @@ class UpdateProposer(ABC):
 
 
 class VAEProposer(UpdateProposer):
-    def __init__(self,lattice_dim, window_size, latent_dim, double_input =False, batch_size=None, device='cpu', beta=1.0):
+    def __init__(self,lattice_dim, window_size, latent_dim, double_input =False,learning=False, batch_size=None, device='cpu', beta=1.0):
 
         self.window_size = window_size
         self.lattice_dim = lattice_dim
         self.batch_size = batch_size if batch_size is not None else self.Ntot
         self.input_dim = window_size**lattice_dim
         self.double_input = double_input
+        self.learning = learning
 
         # Lazy initialization
         self.setupComplete = False
@@ -47,16 +48,17 @@ class VAEProposer(UpdateProposer):
         self.hidden_dim = hidden_dim
         self.latent_dim = latent_dim
 
+    def setLearning(self, learning):
+        self.learning = learning
 
-    def updateCycle(self, simulation,optional_arg=None,site=None):
+    def updateCycle(self, simulation,site=None):
 
 
         if not self.setupComplete:
             self.simulation = simulation
             self.Ntot = simulation.lattice.Ntot
             self.addressList = np.arange(self.Ntot)
-            self.setupComplete = True
-            self.learning = optional_arg  # Store learning flag
+            self.setupComplete = True  # Store learning flag
 
 
 
@@ -202,7 +204,7 @@ class HeatbathProposer(UpdateProposer):
     def shuffleList(self):
         self.addressList = np.random.permutation(self.addressList)
 
-    def updateCycle(self, simulation,optional_arg=None):
+    def updateCycle(self, simulation):
 
         if not self.setupComplete:
             self.simulation = simulation
@@ -243,37 +245,8 @@ class HeatbathProposer(UpdateProposer):
         # unconditional set for heatbath
         self.simulation.workingLattice[n] = new_value
 
-
-
-    def update2(self, simulation, site = None,old=None):
-        
-        if not self.setupComplete:
-            self.simulation = simulation
-            self.Ntot = simulation.lattice.Ntot
-            self.addressList = np.arange(self.Ntot)
-            self.setupComplete = True
-
-        
-        
-        n = site
-
-        
-        m = self.simulation.action.m
-        dim = self.simulation.lattice.dim
-
-        A = m**2 + 2*dim
-
-        neighbourSum = self.simulation.action.sumNeighbours(self.simulation, n)
-
-        B = neighbourSum * self.simulation.workingLattice[site]
-
-
-        new_value = r.gauss(B/A, 1/A)  # Generate a new value from a Gaussian distribution
-        
-        self.simulation.workingLattice[n] = new_value
-
 class MetropolisProposer(UpdateProposer):
-    def __init__(self, dMax, beta=1.0, shuffle=False):
+    def __init__(self, dMax=2.0, beta=1.0, shuffle=False):
         self.dMax = dMax
         self.beta = beta
         self.shuffle = shuffle
@@ -300,10 +273,31 @@ class MetropolisProposer(UpdateProposer):
             n = self.addressList[i]
             self.update(simulation, site=n)
 
-    def printParams(self):
-        print(f"Metropolis Proposer parameters: dMax = {self.dMax}, beta = {self.beta}")
+    def update(self, simulation, site=None):
+        
+        action = simulation.action
+        lattice = simulation.workingLattice
+    
 
-    def update(self, simulation, site):
+
+
+        d = r.gauss(0,self.dMax)
+        dS = simulation.action.actionChange(simulation, site,d)
+
+        boltFactor = np.exp(-dS*self.beta)
+
+        roll = r.uniform(0,1)
+
+        accepted = roll <= boltFactor
+        
+        if accepted:
+            simulation.workingLattice[site] += d
+
+
+
+        return super().update(simulation, site)
+
+    def updateOld(self, simulation, site):
 
         d = r.gauss(0,self.dMax)
         dS = simulation.action.actionChange(simulation, site,d)
@@ -329,8 +323,10 @@ class DummyProposer(UpdateProposer):
     def updateCycle(self, simulation,site=None):
         self.update(simulation)
 
-    def update(self, simulation, site=None):
-        pass
+    def update(self, latticeState, site=None):
+        
+        acceptance_probability = 1.0
+        return latticeState, acceptance_probability
 
 
 

@@ -219,11 +219,8 @@ class VAE(nn.Module):
 
   
     def runLoop(self, phi, learning): # phi is the input tensor
-        """
-        Run a forward pass through the VAE and train.
-        :param phi: Input tensor
-        :return: Reconstructed output, mean, and log variance
-        """
+
+
         self.input_phi = phi  # Store input for decoder if double_input is used 
         mean, logvar = self.encode(phi)
 

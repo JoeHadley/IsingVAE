@@ -28,8 +28,8 @@ lat1 = SquareND(latdims, shuffle=True)
 lat2 = SquareND(latdims, shuffle=True)
 act1 = Action(m=1.0)
 act2 = Action(m=1.0)
-upd1 =HeatbathProposer()
-upd2 = VAEProposer( lattice_dim=dim, window_size=2, latent_dim=1, double_input=False, batch_size=1, device='cpu', beta=1.0)
+upd1 = MetropolisProposer()
+upd2 = VAEProposer( lattice_dim=dim, window_size=2, latent_dim=1, double_input=False, learning = False, batch_size=1, device='cpu', beta=1.0)
 obs1 = Observer("action")
 obs2 = Observer("action")
 sim1 = Simulation(
@@ -55,12 +55,12 @@ sim2.workingLattice = np.random.uniform(-1, 1, size=lat2.Ntot)
 sim1.updateCycles(10000)
 for i in range(10):
     print(f"VAE Cycle {i*1000}/100000")
-    sim2.updateCycles(1000,optional_arg=False)
+    sim2.updateCycles(1000)
 
 
 
 specific_heat1, heat_error1 = calculate_specific_heat(sim1)
-print("Sim 1 Specific Heat per site:", specific_heat1, " ± ",heat_error1)
+print("Metropolis Specific Heat per site:", specific_heat1, " ± ",heat_error1)
 
 specific_heat2, heat_error2 = calculate_specific_heat(sim2)
-print("Sim 2 Specific Heat per site:", specific_heat2, " ± ",heat_error2)
+print("VAE Specific Heat per site:", specific_heat2, " ± ",heat_error2)

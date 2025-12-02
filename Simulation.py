@@ -20,6 +20,13 @@ class Simulation:
 
         self.ReaderWriter = ReaderWriter()
 
+        # Prepare array for acceptance rates
+        self.historyLimit = 10000
+        self.history = np.zeros(self.historyLimit)
+        self.historyCount = 0
+        self.historyLimitReached = False
+
+
         # Take lattice properties from the lattice object
         self.latdims = self.lattice.latdims
         self.Ntot = self.lattice.Ntot
@@ -32,19 +39,24 @@ class Simulation:
         showLat = np.reshape(self.workingLattice,self.latdims)
         print(showLat)
     
-    def updateCycles(self,cycles,warmingFlag=False,optional_arg=None):
-        for c in range(cycles):
-            #print(f"Running cycle {c+1}/{cycles}")
+    def updateCycles(self,cycles,warmingFlag=False):
+      for c in range(cycles):
+        self.updateCycle(warmingFlag)
            
-           if optional_arg is None:
-                self.updateCycle(warmingFlag)
-           else:
-            self.updateCycle(warmingFlag,optional_arg)
-    
-    def updateCycle(self, warmingFlag=False, optional_arg=None):
-        self.updateProposer.updateCycle(self, optional_arg)
-        if not warmingFlag:
+    def updateCycle(self, warmingFlag=False):
+        self.updateProposer.updateCycle(self)
+        if not warmingFlag and self.observer is not None:
             self.observer.recordObservable(self)
+
+    def sim_update(self):
+        acceptance_probability = self.updateProposer
+        newLattice, acceptance_probability = self.updateProposer.update(self.workingLattice)
+
+        roll = np.random.uniform(0,1)
+
+        if roll <= acceptance_probability:
+          self.workingLattice = newLattice
+
 
 
 
