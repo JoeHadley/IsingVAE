@@ -2,7 +2,7 @@ import numpy as np
 import random as r
 
 class Action:
-    def __init__(self, m=1,l=0):
+    def __init__(self, m=1.0,l=0):
         
 
         self.m = m
@@ -26,9 +26,10 @@ class Action:
             phi = workingLattice[n]
             neighbTotal = 0
 
-            # Sum the positive neighbours, not both sides 
+            # Try use both sides 
             for d in range(dim):
                 neighbTotal += workingLattice[lattice.shift(n,d,1)]
+                neighbTotal += workingLattice[lattice.shift(n,d,-1)]
             
             kinetic = lattice.dim * phi**2 - phi * neighbTotal
 

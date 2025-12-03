@@ -229,11 +229,13 @@ class HeatbathProposer(UpdateProposer):
             self.addressList = np.arange(self.Ntot)
             self.setupComplete = True
 
-        n = site
+
+
+
         m = self.simulation.action.m
         dim = self.simulation.lattice.dim
         A = 0.5*m**2 + dim
-        B= self.simulation.action.sumNeighbours(self.simulation, n )  # should be plain sum of neighbor phi
+        B= self.simulation.action.sumNeighbours(self.simulation, site )  # should be plain sum of neighbor phi
 
         # Correct mean and stddev for conditional Gaussian:
         mean = B / (2*A)
@@ -243,7 +245,7 @@ class HeatbathProposer(UpdateProposer):
         new_value = r.gauss(mean, stddev)
 
         # unconditional set for heatbath
-        self.simulation.workingLattice[n] = new_value
+        self.simulation.workingLattice[site] = new_value
 
 class MetropolisProposer(UpdateProposer):
     def __init__(self, dMax=2.0, beta=1.0, shuffle=False):
@@ -270,17 +272,10 @@ class MetropolisProposer(UpdateProposer):
 
 
         for i in range(self.Ntot):
-            n = self.addressList[i]
-            self.update(simulation, site=n)
+            site = self.addressList[i]
+            self.update(simulation, site)
 
-    def update(self, simulation, site=None):
-        
-        action = simulation.action
-        lattice = simulation.workingLattice
-    
-
-
-
+    def update(self, simulation, site):
         d = r.gauss(0,self.dMax)
         dS = simulation.action.actionChange(simulation, site,d)
 
@@ -295,7 +290,7 @@ class MetropolisProposer(UpdateProposer):
 
 
 
-        return super().update(simulation, site)
+        #return super().update(simulation, site)
 
     def updateOld(self, simulation, site):
 

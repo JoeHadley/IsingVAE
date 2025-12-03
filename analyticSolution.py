@@ -8,24 +8,22 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 
 
-m = 1
-L = 14
-T = 14
 
-def comp_numerator(x1,x2,nx,t1,t2,nt):
+
+def comp_numerator(x1,x2,nx,t1,t2,nt,T,L):
     return np.exp(1j*2*np.pi*nx*(x2-x1)/L)*np.exp(1j*2*np.pi*nt*(t2-t1)/T)
 
-def denominator(nx,nt,m=1):
+def denominator(nx,nt,m,T,L):
     return 4*np.sin(np.pi*nx/L)**2 + 4*np.sin(np.pi*nt/T)**2 + m**2
 
 
-def compAnCorr(x1,x2,t1,t2,m=1):
+def compAnCorr(x1,x2,t1,t2,m,T,L):
     result = 0
 
     for nx in range(L):
         for nt in range(T):
             #result2 =+ real_numerator(x1,x2,nx,t1,t2,nt)/denominator(nx,nt)
-            result += comp_numerator(x1,x2,nx,t1,t2,nt)/denominator(nx,nt,m)
+            result += comp_numerator(x1,x2,nx,t1,t2,nt,T,L)/denominator(nx,nt,m,T,L)
     return np.real_if_close(result/(L*T))
 
 
@@ -35,7 +33,7 @@ def getAnalyticCorrelator(lattice,m):
     L = lattice.latdims[1]
 
 
-    filePath = "AnalyticalCorrelator"+str(T)+"x"+str(L)+".txt"
+    filePath = "analyticalCorrelators/AnalyticalCorrelator"+str(T)+"x"+str(L)+", m="+str(m)+".txt"
 
     if os.path.exists(filePath):
         compResults = np.genfromtxt(filePath)
@@ -49,7 +47,7 @@ def getAnalyticCorrelator(lattice,m):
             for x in range(L):
                 for y in range(L):
                     for t in range(T):
-                        compResults[tau] += compAnCorr(x,y,t,(t+tau)%T,m)
+                        compResults[tau] += compAnCorr(x,y,t,(t+tau)%T,m,T,L)
 
         compResults /= (L*L*T)
 

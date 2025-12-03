@@ -79,17 +79,7 @@ def twoPointTimeCorr(simulation, configNumber, interconfigCycles):
 
 
 
-
-
-
-
-
-T = 14
-L = 14
-latdims = np.array((T,L))
-
 a = 2
-
 exp1 = a
 exp2 = a
 exp3 = a
@@ -98,46 +88,84 @@ correlatorConfigs = int(10**exp2)#10**exp2)
 interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
 
-lattice = SquareND(latdims, shuffle=True)
-m = 1.0
-action = Action(m=m)
-#proposer = MetropolisProposer(dMax=0.5)
-proposer = HeatbathProposer()
-sim = Simulation(
-  beta=1.0,
-  lattice=lattice,
-  action=action,
-  updateProposer=proposer,
-  warmCycles=pregameWarmCycles
-  )
+#(2,2),(4,4),(5,5),(8,8),(10,10),(14,14),(5,10),(14,8)
+pairs = [(10,10)]
+for pair in pairs:
+  latdims = np.array(pair)
+  T = latdims[0]
+  L = latdims[1]
 
+  #0.1,0.5,1.0,1.5
+  for m in [1.0]:
 
-#for i in range(configNumber):
-#    print(str(i+1)+"/"+str(configNumber))
-#    sim.updateCycles(interconfigCycles)
-#    sim.ReaderWriter.writeConfig(sim,filename= "TestingData.bin")
-
-print("correlatorConfigs:",correlatorConfigs)
-
-GCArray, GCErrors = twoPointTimeCorr(sim,correlatorConfigs,interconfigCycles)
-
-
-xAxis = np.arange(latdims[0]+1)
-
-
-analyticResults = getAnalyticCorrelator(lattice,m)
+    for proposerType in ["HB"]:
+    
+      action = Action(m=m)
 
 
 
-plt.errorbar(xAxis,GCArray,GCErrors,label="Monte Carlo")
-plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
-plt.xlabel("Tau")
-plt.ylabel("G(tau)")
+      lattice = SquareND(latdims, shuffle=True)
 
 
-plt.plot(analyticResults,linestyle="dashed",label="Analytical")
+      if proposerType == "HB":
+        proposer = HeatbathProposer()
+      elif proposerType == "MH":
+        proposer = MetropolisProposer(dMax=1.0)
 
 
-plt.legend()
+      sim = Simulation(
+        beta=1.0,
+        lattice=lattice,
+        action=action,
+        updateProposer=proposer,
+        warmCycles=pregameWarmCycles
+        )
 
-plt.show()
+
+      #for i in range(configNumber):
+      #    print(str(i+1)+"/"+str(configNumber))
+      #    sim.updateCycles(interconfigCycles)
+      #    sim.ReaderWriter.writeConfig(sim,filename= "TestingData.bin")
+
+      GCArray, GCErrors = twoPointTimeCorr(sim,correlatorConfigs,interconfigCycles)
+
+
+      xAxis = np.arange(latdims[0]+1)
+
+
+      analyticResults = getAnalyticCorrelator(lattice,m)
+
+
+
+      plt.errorbar(xAxis,GCArray,GCErrors,label="Monte Carlo")
+
+
+      titleString = f"{proposerType} {T}x{L}, m={m}, a=[{exp1},{exp2},{exp3}]"
+
+      plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
+      plt.xlabel("Tau")
+      plt.ylabel("G(tau)")
+
+
+      plt.plot(analyticResults,linestyle="dashed",label="Analytical")
+
+
+      plt.legend()
+
+      #Output Points to file
+
+      outputData = np.zeros((latdims[0]+1,4))
+      for i in range(latdims[0]+1):
+          outputData[i,0] = i
+          outputData[i,1] = GCArray[i]
+          outputData[i,2] = GCErrors[i]
+          outputData[i,3] = analyticResults[i]
+
+
+
+      saveString = proposerType+str(T)+"x"+str(L)+",m="+str(m)+",a="+str(exp1)+str(exp2)+str(exp3)
+
+      np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
+      plt.savefig("figures/"+saveString+".png")
+
+      plt.close()
