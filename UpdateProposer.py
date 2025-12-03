@@ -24,21 +24,17 @@ class UpdateProposer(ABC):
         
 
 
-
+@ dataclass
 class VAEProposer(UpdateProposer):
-  def __init__(self,lattice_dim, window_size, latent_dim, double_input =False,learning=False, batch_size=None, device='cpu', beta=1.0):
+  MCbeta: float = 1.0
+  VAEbeta: float = 1.0
+  window_size: int
+  latent_dim: int
+  double_input: bool
+  learning: bool
+  device: str='cpu'
 
-    self.window_size = window_size
-    self.lattice_dim = lattice_dim
-    self.batch_size = batch_size if batch_size is not None else self.Ntot
-    self.input_dim = window_size**lattice_dim
-    self.double_input = double_input
-    self.learning = learning
-
-    # Lazy initialization
-    self.setupComplete = False
-    self.Ntot = None
-    self.addressList = None
+  def __post_init__(self):
 
 
     # Nearest power of 2 to input_dim/2
@@ -47,23 +43,12 @@ class VAEProposer(UpdateProposer):
 
 
 
-    self.VAE = VAE(self.input_dim, hidden_dim, latent_dim,double_input, device, beta, lr=1e-3)  # Example parameters
-    self.input_dim = self.input_dim
-    self.hidden_dim = hidden_dim
-    self.latent_dim = latent_dim
-
+    self.VAE = VAE(self.input_dim, hidden_dim, self.latent_dim,self.double_input, self.device, self.VAEbeta, lr=1e-3)  # Example parameters
+    
   def setLearning(self, learning):
     self.learning = learning
 
   def updateCycle(self, simulation,site=None):
-
-
-    if not self.setupComplete:
-      self.simulation = simulation
-      self.Ntot = simulation.lattice.Ntot
-      self.addressList = np.arange(self.Ntot)
-      self.setupComplete = True  # Store learning flag
-
 
 
     for i in range(self.batch_size):
@@ -106,7 +91,6 @@ class VAEProposer(UpdateProposer):
         simulation.workingLattice = new_lattice  # Update the lattice with the new field value
 
     return accepted
-
 
 
 
