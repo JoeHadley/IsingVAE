@@ -142,7 +142,7 @@ for pair in pairs:
 
       titleString = f"{proposerType} {T}x{L}, m={m}, a=[{exp1},{exp2},{exp3}]"
 
-      plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
+      plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs33")
       plt.xlabel("Tau")
       plt.ylabel("G(tau)")
 
