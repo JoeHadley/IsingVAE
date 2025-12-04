@@ -14,14 +14,14 @@ import os
 from Observer import Observer
 
 def getCoords(n, sideLength):
-    row = int(n//sideLength)
-    col = int(n%sideLength)
-    return row,col
+  row = int(n//sideLength)
+  col = int(n%sideLength)
+  return row,col
 
 def plot(data):
-    plt.plot(data)
+  plt.plot(data)
 
-    plt.show()
+  plt.show()
 
 
 
@@ -79,7 +79,7 @@ def twoPointTimeCorr(simulation, configNumber, interconfigCycles):
 
 
 
-a = 2
+a = 3
 exp1 = a
 exp2 = a
 exp3 = a
@@ -88,17 +88,17 @@ correlatorConfigs = int(10**exp2)#10**exp2)
 interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
 
-#(2,2),(4,4),(5,5),(8,8),(10,10),(14,14),(5,10),(14,8)
-pairs = [(10,10)]
+#(2,2),(4,4),(5,5),(8,8),(10,10),(12,12),(5,10),(14,8)
+pairs = [(2,2),(4,4),(5,5),(8,8)]
 for pair in pairs:
   latdims = np.array(pair)
   T = latdims[0]
   L = latdims[1]
 
   #0.1,0.5,1.0,1.5
-  for m in [1.0]:
+  for m in [0.5,1.0,1.5]:
 
-    for proposerType in ["HB"]:
+    for proposerType in ["HB","MH"]:
     
       action = Action(m=m)
 
@@ -142,7 +142,7 @@ for pair in pairs:
 
       titleString = f"{proposerType} {T}x{L}, m={m}, a=[{exp1},{exp2},{exp3}]"
 
-      plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs33")
+      plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
       plt.xlabel("Tau")
       plt.ylabel("G(tau)")
 

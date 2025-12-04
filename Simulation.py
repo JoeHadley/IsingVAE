@@ -9,7 +9,7 @@ from VAEDefinition import VAE
 from ReaderWriter import ReaderWriter
 from statFunctions import jackknife_bins, integrated_autocorr_time
 class Simulation:
-  def __init__(self, beta, lattice,action,updateProposer,observer=None,warmCycles=0,shuffle_list=True, initConfig = None):
+  def __init__(self, beta, lattice,action,updateProposer,observer=None,warmCycles=0,shuffle_address_list=True, initConfig = None):
     self.beta = beta
     self.lattice = lattice
     self.action = action
@@ -35,7 +35,7 @@ class Simulation:
 
     self.address_list = np.arange(self.Ntot)
     self.cycleSize = self.Ntot # Default cyclesize
-    self.shuffle_list = True
+    self.shuffle_address_list = shuffle_address_list
 
     self.workingLattice = self.lattice.initializeLattice(initConfig)
     self.updateCycles(self.warmCycles, warmingFlag=True)
@@ -76,6 +76,16 @@ class Simulation:
 
     if roll <= acceptance_probability:
       self.workingLattice = new_lattice
+    
+
+
+    if not self.acceptanceRateHistoryLimitReached:
+      self.acceptanceRateHistory[self.acceptanceRateHistoryCount] = acceptance_probability
+      self.acceptanceRateHistoryCount += 1
+      if self.acceptanceRateHistoryCount == self.acceptanceRateHistoryLimit:
+        self.acceptanceRateHistoryLimitReached = True
+    
+
 
 
 

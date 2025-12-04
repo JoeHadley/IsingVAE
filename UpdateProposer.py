@@ -26,13 +26,14 @@ class UpdateProposer(ABC):
 
 @ dataclass
 class VAEProposer(UpdateProposer):
-  MCbeta: float = 1.0
-  VAEbeta: float = 1.0
+  
   window_size: int
   latent_dim: int
   double_input: bool
   learning: bool
   device: str='cpu'
+  MCbeta: float = 1.0
+  VAEbeta: float = 1.0
 
   def __post_init__(self):
 
