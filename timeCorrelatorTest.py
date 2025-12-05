@@ -79,7 +79,7 @@ def twoPointTimeCorr(simulation, configNumber, interconfigCycles):
 
 
 
-a = 3
+a = 2
 exp1 = a
 exp2 = a
 exp3 = a
@@ -89,16 +89,16 @@ interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
 
 #(2,2),(4,4),(5,5),(8,8),(10,10),(12,12),(5,10),(14,8)
-pairs = [(2,2),(4,4),(5,5),(8,8)]
+pairs = [(10,10)]
 for pair in pairs:
   latdims = np.array(pair)
   T = latdims[0]
   L = latdims[1]
 
   #0.1,0.5,1.0,1.5
-  for m in [0.5,1.0,1.5]:
+  for m in [1.0]:
 
-    for proposerType in ["HB","MH"]:
+    for proposerType in ["MH"]:
     
       action = Action(m=m)
 
@@ -110,7 +110,7 @@ for pair in pairs:
       if proposerType == "HB":
         proposer = HeatbathProposer()
       elif proposerType == "MH":
-        proposer = MetropolisProposer(dMax=1.0)
+        proposer = MetropolisProposer(dMax=1.0,beta=1.0,distribution='uniform')
 
 
       sim = Simulation(

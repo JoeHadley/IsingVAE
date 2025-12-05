@@ -22,8 +22,8 @@ class Simulation:
 
     # Prepare array for acceptance rates
     self.acceptanceRateHistoryLimit = 10000
-    self.acceptanceRateHistory = np.zeros(self.acceptanceRateHistoryLimit)
-    self.acceptanceHistory = np.zeros(self.acceptanceRateHistoryLimit)
+    self.acceptanceRateHistory = np.zeros(2*self.acceptanceRateHistoryLimit)
+    self.acceptanceHistory = np.zeros(2*self.acceptanceRateHistoryLimit)
     self.acceptanceRateHistoryCount = 0
     self.acceptanceRateHistoryLimitReached = False
 
@@ -43,7 +43,7 @@ class Simulation:
 
 
 
-  def shuffle_address_list(self):
+  def shuffle_list(self):
     self.address_list = np.random.permutation(self.address_list)
 
 
@@ -56,8 +56,8 @@ class Simulation:
       self.updateCycle(warmingFlag)
           
   def updateCycle(self, warmingFlag=False):
-    if self.shuffle_list:
-      self.shuffle_address_list()
+    if self.shuffle_address_list:
+      self.shuffle_list()
 
     for i in range(self.cycleSize):
       site = self.address_list[i]

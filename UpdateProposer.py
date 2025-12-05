@@ -122,14 +122,19 @@ class HeatbathProposer(UpdateProposer):
 
 
 
-
+@ dataclass
 class MetropolisProposer(UpdateProposer):
-  def __init__(self, dMax=2.0, beta=1.0):
-    self.dMax = dMax
-    self.beta = beta
+  dMax: float = 2.0
+  beta: float = 1.0
+  distribution: str = 'uniform'  # 'uniform' or 'gaussian'
 
   def propose(self, simulation, site):
-    d = r.gauss(0,self.dMax)
+
+    if self.distribution == 'gaussian':
+      d = r.gauss(0, self.dMax)
+    elif self.distribution == 'uniform':
+      d = r.uniform(-self.dMax, self.dMax)
+
 
     new_lattice = simulation.workingLattice.copy()
     new_lattice[site] += d
