@@ -168,4 +168,4 @@ for pair in pairs:
       np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
       plt.savefig("figures/"+saveString+".png")
 
-      plt.close()
+      #plt.close()
