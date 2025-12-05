@@ -23,6 +23,7 @@ class Simulation:
     # Prepare array for acceptance rates
     self.acceptanceRateHistoryLimit = 10000
     self.acceptanceRateHistory = np.zeros(self.acceptanceRateHistoryLimit)
+    self.acceptanceHistory = np.zeros(self.acceptanceRateHistoryLimit)
     self.acceptanceRateHistoryCount = 0
     self.acceptanceRateHistoryLimitReached = False
 
@@ -76,7 +77,14 @@ class Simulation:
 
     if roll <= acceptance_probability:
       self.workingLattice = new_lattice
+
     
+      if self.acceptanceRateHistoryLimitReached:
+        self.acceptanceHistory[self.acceptanceRateHistoryCount] = 1
+    
+
+
+
 
 
     if not self.acceptanceRateHistoryLimitReached:
@@ -85,6 +93,10 @@ class Simulation:
       if self.acceptanceRateHistoryCount == self.acceptanceRateHistoryLimit:
         self.acceptanceRateHistoryLimitReached = True
     
+
+
+
+
 
 
 
