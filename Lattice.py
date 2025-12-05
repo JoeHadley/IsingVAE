@@ -81,12 +81,6 @@ class SquareND(Lattice):
     def show(self):
         showLat = np.reshape(self.lat,self.latdims)
         print(showLat)
-    
-    def shuffleList(self):
-        
-        indices = np.random.permutation(self.Ntot)
-        self.addressList = self.addressList[indices]
-    
 
 
     def shiftOld(self,site,dim,jump):

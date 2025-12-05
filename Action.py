@@ -10,9 +10,6 @@ class Action:
 
 
  
-    def printParams(self):
-        print(f"Action parameters: m = {self.m}, l = {self.l}")
-
     def findAction(self,simulation,overrideWorkingLattice=None):
         lattice = simulation.lattice
         workingLattice = simulation.workingLattice if overrideWorkingLattice is None else overrideWorkingLattice

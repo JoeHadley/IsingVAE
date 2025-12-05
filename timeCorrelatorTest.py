@@ -80,9 +80,9 @@ def twoPointTimeCorr(simulation, configNumber, interconfigCycles):
 
 
 a = 2
-exp1 = a
-exp2 = a
-exp3 = a
+exp1 = 2
+exp2 = 2
+exp3 = 2
 pregameWarmCycles = int(10**exp1)
 correlatorConfigs = int(10**exp2)#10**exp2)
 interconfigCycles = int(10**exp3) # Each cycle is T*L updates
@@ -110,7 +110,7 @@ for pair in pairs:
       if proposerType == "HB":
         proposer = HeatbathProposer()
       elif proposerType == "MH":
-        proposer = MetropolisProposer(dMax=1.0,beta=1.0,distribution='uniform')
+        proposer = MetropolisProposer(dMax=1.0,beta=1.0,distribution='gaussian')
 
 
       sim = Simulation(
@@ -140,9 +140,9 @@ for pair in pairs:
       plt.errorbar(xAxis,GCArray,GCErrors,label="Monte Carlo")
 
 
-      titleString = f"{proposerType} {T}x{L}, m={m}, a=[{exp1},{exp2},{exp3}]"
+      titleString = f"{proposerType} Uniform {T}x{L}, m={m}, a=[{exp1},{exp2},{exp3}]"
 
-      plt.title(f"{T}x{L} lattice, {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
+      plt.title(f"MH Uniform, {T}x{L} lattice \n {pregameWarmCycles} warming cycles, {correlatorConfigs} configs, {interconfigCycles} cycles between configs")
       plt.xlabel("Tau")
       plt.ylabel("G(tau)")
 
@@ -163,7 +163,7 @@ for pair in pairs:
 
 
 
-      saveString = proposerType+str(T)+"x"+str(L)+",m="+str(m)+",a="+str(exp1)+str(exp2)+str(exp3)
+      saveString = proposerType+"uniform" + str(T)+"x"+str(L)+",m="+str(m)+",a="+str(exp1)+str(exp2)+str(exp3)
 
       np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
       plt.savefig("figures/"+saveString+".png")
