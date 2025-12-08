@@ -15,7 +15,7 @@ myAction = Action()
 myLattice = SquareND(latdims)
 myUpdateProposer = MetropolisProposer()
 myObserver = Observer("phiBar")
-mySimulation = Simulation(1.0, myLattice, myAction, myUpdateProposer, myObserver,1000)
+mySimulation = Simulation(1.0, myLattice, myAction, myUpdateProposer, myObserver,50)
 
 mySimulation.updateCycles(50)
 

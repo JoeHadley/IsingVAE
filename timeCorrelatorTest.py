@@ -89,7 +89,7 @@ interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
 
 #(2,2),(4,4),(5,5),(8,8),(10,10),(12,12),(5,10),(14,8)
-pairs = [(10,10)]
+pairs = [(3,3)]
 for pair in pairs:
   latdims = np.array(pair)
   T = latdims[0]
@@ -165,7 +165,8 @@ for pair in pairs:
 
       saveString = proposerType+"uniform" + str(T)+"x"+str(L)+",m="+str(m)+",a="+str(exp1)+str(exp2)+str(exp3)
 
-      np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
-      plt.savefig("figures/"+saveString+".png")
+      #np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
+      #plt.savefig("figures/"+saveString+".png")
 
+      plt.show()
       #plt.close()
