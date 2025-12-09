@@ -21,9 +21,9 @@ class Simulation:
     self.ReaderWriter = ReaderWriter()
 
     # Prepare array for acceptance rates
-    self.acceptanceRateHistoryLimit = 10000
-    self.acceptanceRateHistory = np.zeros(2*self.acceptanceRateHistoryLimit)
-    self.acceptanceHistory = np.zeros(2*self.acceptanceRateHistoryLimit)
+    self.acceptanceRateHistoryLimit = 1000000
+    self.acceptanceRateHistory = np.zeros(self.acceptanceRateHistoryLimit)
+    self.acceptanceHistory = np.zeros(self.acceptanceRateHistoryLimit)
     self.acceptanceRateHistoryCount = 0
     self.acceptanceRateHistoryLimitReached = False
 
@@ -75,11 +75,15 @@ class Simulation:
 
     roll = np.random.uniform(0,1)
 
+
+    #print("Acceptance Probability: ", acceptance_probability)
+
     if roll <= acceptance_probability:
       self.workingLattice = new_lattice
 
+
     
-      if self.acceptanceRateHistoryLimitReached:
+      if not self.acceptanceRateHistoryLimitReached:
         self.acceptanceHistory[self.acceptanceRateHistoryCount] = 1
     
 

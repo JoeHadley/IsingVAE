@@ -8,16 +8,28 @@ from Observer import *
 from Action import *
 
 
-latdims = [10]
+latdims = [8,8]
 
 
 myAction = Action()
 myLattice = SquareND(latdims)
-myUpdateProposer = MetropolisProposer()
+#myUpdateProposer = VAEProposer(input_dim=4, latent_dim=2, double_input=False, learning=True, device='cpu', MCbeta=1.0, VAEbeta=1.0)
+
+distribution = "pareto"  # Options: "uniform", "gaussian"
+
+myUpdateProposer = MetropolisProposer(distribution=distribution)
 myObserver = Observer("phiBar")
-mySimulation = Simulation(1.0, myLattice, myAction, myUpdateProposer, myObserver,50)
+mySimulation = Simulation(1.0, myLattice, myAction, myUpdateProposer, myObserver)
 
-mySimulation.updateCycles(50)
+mySimulation.updateCycles(1000)
 
-plt.plot(mySimulation.workingLattice)
+data = mySimulation.acceptanceRateHistory[:mySimulation.acceptanceRateHistoryCount]
+
+#Histogram of acceptance rates
+print(mySimulation.acceptanceRateHistoryCount)
+plt.hist(data, bins=100)
+plt.title("Histogram of Acceptance Rates\n" + "8x8, " + str.capitalize(distribution) + " Distribution")
+#plt.plot(data)
+
+
 plt.show()

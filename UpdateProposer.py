@@ -27,7 +27,7 @@ class UpdateProposer(ABC):
 @ dataclass
 class VAEProposer(UpdateProposer):
   
-  window_size: int
+  input_dim: int
   latent_dim: int
   double_input: bool
   learning: bool
@@ -56,11 +56,15 @@ class VAEProposer(UpdateProposer):
       n = r.choice(self.addressList)
       self.update(simulation, site=n,learning=self.learning)
 
-  def update(self, simulation, site,learning=False):
 
+  def propose(self, simulation, site,learning=False):
+
+
+
+  
     #print(f"VAEProposer update at site {site}, learning={learning}")  # Debug statement
 
-    input_phi, window_dims = simulation.lattice.createWindow(site,self.window_size)
+    input_phi, window_dims = simulation.lattice.createWindow(site,self.input_dim)
 
     #make the input a tensor if it is not already
     if not isinstance(input_phi, torch.Tensor):
@@ -88,10 +92,7 @@ class VAEProposer(UpdateProposer):
     roll = r.uniform(0, 1)
     accepted = roll < acceptance_prob
 
-    if accepted:
-        simulation.workingLattice = new_lattice  # Update the lattice with the new field value
-
-    return accepted
+    return output_phi, acceptance_prob
 
 
 
@@ -134,7 +135,8 @@ class MetropolisProposer(UpdateProposer):
       d = r.gauss(0, self.dMax)
     elif self.distribution == 'uniform':
       d = r.uniform(-self.dMax, self.dMax)
-
+    elif self.distribution == 'pareto':
+      d = r.paretovariate(self.dMax)
 
     new_lattice = simulation.workingLattice.copy()
     new_lattice[site] += d
@@ -142,7 +144,7 @@ class MetropolisProposer(UpdateProposer):
     
     dS = simulation.action.actionChange(simulation, site,d)
 
-    acceptance_probability = np.exp(-dS*self.beta)
+    acceptance_probability = min(1,np.exp(-dS*self.beta))
     return new_lattice, acceptance_probability
         
 
