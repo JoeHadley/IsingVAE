@@ -99,8 +99,17 @@ class Simulation:
     
 
 
-
-
+  def returnFT(self):
+    tempLattice = self.workingLattice.copy().reshape(self.latdims)
+    match self.dim:
+      case 1:
+        result = np.fft.fft(tempLattice)
+      case 2:
+        result = np.fft.fft2(tempLattice)
+      case _:
+        result = np.fft.fftn(tempLattice)
+    return result
+        
 
 
 

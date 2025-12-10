@@ -8,28 +8,59 @@ from Observer import *
 from Action import *
 
 
-latdims = [8,8]
+Nx=4
+Ny=2
+Nz=0
+
+latdims = [Nx,Ny]
 
 
-myAction = Action()
+myAction = Action(m=2.0)
 myLattice = SquareND(latdims)
 #myUpdateProposer = VAEProposer(input_dim=4, latent_dim=2, double_input=False, learning=True, device='cpu', MCbeta=1.0, VAEbeta=1.0)
 
-distribution = "pareto"  # Options: "uniform", "gaussian"
+
+distribution = "gaussian"  # Options: "uniform", "gaussian"
 
 myUpdateProposer = MetropolisProposer(distribution=distribution)
-myObserver = Observer("phiBar")
+myObserver = Observer("StructFactor",latdims=latdims)
 mySimulation = Simulation(1.0, myLattice, myAction, myUpdateProposer, myObserver)
 
-mySimulation.updateCycles(1000)
+mySimulation.updateCycles(2000)
 
-data = mySimulation.acceptanceRateHistory[:mySimulation.acceptanceRateHistoryCount]
-
-#Histogram of acceptance rates
-print(mySimulation.acceptanceRateHistoryCount)
-plt.hist(data, bins=100)
-plt.title("Histogram of Acceptance Rates\n" + "8x8, " + str.capitalize(distribution) + " Distribution")
-#plt.plot(data)
+data = mySimulation.observer.history[:mySimulation.observer.historyCount]
 
 
-plt.show()
+
+
+average = np.mean(data, axis=0)
+stddev = np.std(data, axis=0)
+
+
+
+print("Average Structure Factor:")
+print(average)
+print("Standard Deviation:")
+print(stddev)
+
+
+# Theoretical prediction for comparison
+
+kx = 2*np.pi*np.fft.fftfreq(Nx)
+ky = 2*np.pi*np.fft.fftfreq(Ny)
+
+kx2d, ky2d = np.meshgrid(kx, ky, indexing = 'ij')
+khat2 = 4*np.sin(kx2d/2)**2 + 4*np.sin(ky2d/2)**2
+
+m = 2.0
+
+S_theory = 1/(m**2 + khat2)
+
+
+print("Theoretical Structure Factor:")
+print(S_theory)
+
+
+#k_hat_squared = 4
+
+
