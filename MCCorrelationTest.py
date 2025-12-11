@@ -37,7 +37,7 @@ def mcCorrelator(config1,config2):
 
 import numpy as np
 
-def connectedCorrelator(config1, config2):
+def connectedCorrelator(config1, config28):
     # Convert to numpy arrays
     a = config1
     b = config2

@@ -15,7 +15,7 @@ myAction = Action()
 myLattice = SquareND(latdims)
 #myUpdateProposer = VAEProposer(input_dim=4, latent_dim=2, double_input=False, learning=True, device='cpu', MCbeta=1.0, VAEbeta=1.0)
 
-distribution = "pareto"  # Options: "uniform", "gaussian"
+distribution = "uniform"  # Options: "uniform", "gaussian"
 
 myUpdateProposer = MetropolisProposer(distribution=distribution)
 myObserver = Observer("phiBar")

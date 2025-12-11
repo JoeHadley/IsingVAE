@@ -26,6 +26,7 @@ class Simulation:
     self.acceptanceHistory = np.zeros(self.acceptanceRateHistoryLimit)
     self.acceptanceRateHistoryCount = 0
     self.acceptanceRateHistoryLimitReached = False
+    self.acceptedCount = 0
 
 
     # Take lattice properties from the lattice object
@@ -85,6 +86,7 @@ class Simulation:
     
       if not self.acceptanceRateHistoryLimitReached:
         self.acceptanceHistory[self.acceptanceRateHistoryCount] = 1
+        self.acceptedCount += 1
     
 
 
