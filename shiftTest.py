@@ -2,7 +2,9 @@ import numpy as np
 import random as r
 import math
 import matplotlib.pyplot as plt
-from UpdateProposer import ToyMVAEProposer
+
+
+from UpdateProposer import *
 from Lattice import SquareND
 from Simulation import Simulation
 from Action import Action
@@ -35,12 +37,7 @@ for jump in range(1,4):
         site = 3
         shifted_site = lat.shift(site, direction, jump)%lat.Ntot
 
-        # Using shift2 for verification
-        shifted_site2 = lat.shift2(site, direction, jump)%lat.Ntot
-
+     
         
 
-        if shifted_site != shifted_site2:
-            print(f"Site {site}, direction {direction}, jump {jump}: {shifted_site} (shift) vs {shifted_site2} (shift2). MISMATCH!")
-        else:
-            print(f"Site {site}, direction {direction}, jump {jump}: {shifted_site} (shift) vs {shifted_site2} (shift2). MATCH!")
+        print(f"Site {site}, direction {direction}, jump {jump}: {shifted_site} (shift)")

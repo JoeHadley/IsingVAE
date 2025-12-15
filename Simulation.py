@@ -8,18 +8,21 @@ from Observer import Observer
 from VAEDefinition import VAE
 from ReaderWriter import ReaderWriter
 from statFunctions import jackknife_bins, integrated_autocorr_time
+#def __init__(self, beta, lattice,action,updateProposer,observer=None,warmCycles=0,shuffle_address_list=True, initConfig = None):
+@ dataclass
 class Simulation:
-  def __init__(self, beta, lattice,action,updateProposer,observer=None,warmCycles=0,shuffle_address_list=True, initConfig = None):
-    self.beta = beta
-    self.lattice = lattice
-    self.action = action
-    self.updateProposer = updateProposer
-    self.observer = observer
+  
+  beta: float
+  lattice: Lattice
+  action: Action
+  updateProposer: UpdateProposer
+  observer: Observer = None
 
-    self.warmCycles = warmCycles
+  warmCycles: int = 0
+  shuffle_address_list: bool = True
+  initConfig: np.ndarray = None
 
-    self.ReaderWriter = ReaderWriter()
-
+  def __post_init__(self):
     # Prepare array for acceptance rates
     self.acceptanceRateHistoryLimit = 1000000
     self.acceptanceRateHistory = np.zeros(self.acceptanceRateHistoryLimit)
@@ -37,9 +40,9 @@ class Simulation:
 
     self.address_list = np.arange(self.Ntot)
     self.cycleSize = self.Ntot # Default cyclesize
-    self.shuffle_address_list = shuffle_address_list
+    
 
-    self.workingLattice = self.lattice.initializeLattice(initConfig)
+    self.workingLattice = self.lattice.initializeLattice(self.initConfig)
     self.updateCycles(self.warmCycles, warmingFlag=True)
 
 
@@ -70,8 +73,6 @@ class Simulation:
       self.observer.recordObservable(self)
 
   def update(self,site):
-    
-
     new_lattice,acceptance_probability = self.updateProposer.propose(self,site)
 
     roll = np.random.uniform(0,1)
@@ -128,5 +129,10 @@ class Simulation:
 
 
 
-
+myAction = Action()
+myLattice = SquareND([4,4])
+myUpdater = MetropolisProposer()
+myObserver = Observer("phiBar")
+mySim = Simulation(beta=0.5, lattice=myLattice, action=myAction, updateProposer=myUpdater, observer=myObserver, warmCycles=10)
+mySim.updateCycles(100)
 

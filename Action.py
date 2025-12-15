@@ -28,7 +28,7 @@ class Action:
                 neighbTotal += workingLattice[lattice.shift(n,d,1)]
                 neighbTotal += workingLattice[lattice.shift(n,d,-1)]
             
-            kinetic = lattice.dim * phi**2 - phi * neighbTotal
+            kinetic = lattice.dim * phi**2 - phi * neighbTotal /2  # Divide neighbTotal by 2
 
             mass_term = 0.5 * self.m**2 * phi**2
             quartic = (self.l / 24) * phi**4
@@ -68,12 +68,12 @@ class Action:
         
 
         neighbSum = 0
-        for j in range(2*dim): # Not currently general for other lattice shapes
+        for j in range(2*dim):
             n = int(neighbours[j])
             neighbSum += workingLattice[n]
 
-        dS = d*( 2*workingLattice[address]*(2+ self.m*self.m/2) - neighbSum  ) \
-        + d*d*(2 + self.m*self.m/2 )
+        dS = d*( 2*workingLattice[address]*(dim+ self.m*self.m/2) - neighbSum  ) \
+        + d*d*(dim + self.m*self.m/2 )
 
 
         dSl = self.l*( \
@@ -92,7 +92,7 @@ class Action:
         #directly calculate the change in action for a given site and displacement
         OldAction = self.findAction(simulation)  # Current action value
 
-        #Copy the working lattice to avoid modifying it directly
+
         trial = workingLattice.copy()
         trial[address] += d
         NewAction = self.findAction(simulation,overrideWorkingLattice=trial )  # Action value after the change
