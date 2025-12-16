@@ -16,7 +16,6 @@ Action = Action(m=1.0)
 Updater = DummyProposer()
 Observer = Observer("empty")
 Sim = Simulation(
-    beta=1.0,
     lattice=Lattice,
     action=Action,
     updateProposer=Updater,

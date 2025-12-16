@@ -110,11 +110,11 @@ for pair in pairs:
       if proposerType == "HB":
         proposer = HeatbathProposer()
       elif proposerType == "MH":
-        proposer = MetropolisProposer(dMax=1.0,beta=1.0,distribution='gaussian')
+        proposer = MetropolisProposer(dMax=1.0,distribution='gaussian')
 
 
       sim = Simulation(
-        beta=1.0,
+
         lattice=lattice,
         action=action,
         updateProposer=proposer,

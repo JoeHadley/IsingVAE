@@ -32,7 +32,6 @@ class VAEProposer(UpdateProposer):
   double_input: bool
   learning: bool
   device: str='cpu'
-  MCbeta: float = 1.0
   VAEbeta: float = 1.0
 
   def __post_init__(self):
@@ -78,7 +77,7 @@ class VAEProposer(UpdateProposer):
     old_action = simulation.action.findAction(simulation)
     new_action = simulation.action.findAction(simulation,overrideWorkingLattice=new_lattice)
     dS = new_action - old_action
-    log_alpha += -simulation.beta * dS
+    log_alpha += -  dS
     
 
     acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
@@ -98,7 +97,7 @@ class VAEProposer(UpdateProposer):
 
 @ dataclass
 class HeatbathProposer(UpdateProposer):
-  beta: float = 1.0
+
 
   def propose(self,simulation,site=None):
   
@@ -109,7 +108,7 @@ class HeatbathProposer(UpdateProposer):
 
     # Correct mean and stddev for conditional Gaussian:
     mean = B / (2*A)
-    stddev = math.sqrt(1.0 / (2*self.beta * A))
+    stddev = math.sqrt(1.0 / (2 * A))
 
     # draw new value
     new_value = r.gauss(mean, stddev)
@@ -126,7 +125,6 @@ class HeatbathProposer(UpdateProposer):
 @ dataclass
 class MetropolisProposer(UpdateProposer):
   dMax: float = 2.0
-  beta: float = 1.0
   distribution: str = 'uniform'  # 'uniform' or 'gaussian'
 
   def propose(self, simulation, site):
@@ -144,7 +142,7 @@ class MetropolisProposer(UpdateProposer):
     
     dS = simulation.action.actionChange(simulation, site,d)
 
-    acceptance_probability = min(1,np.exp(-dS*self.beta))
+    acceptance_probability = min(1,np.exp(-dS))
     return new_lattice, acceptance_probability
         
 
@@ -152,7 +150,6 @@ class MetropolisProposer(UpdateProposer):
 @dataclass
 class DummyProposer(UpdateProposer):
   dMax: float = 1.0
-  beta: float = 1.0
 
   def propose(self, simulation,site=None):
     latdims = simulation.lattice.latdims
@@ -161,19 +158,9 @@ class DummyProposer(UpdateProposer):
 
     return newLattice, acceptanceProbability
 
-
-
-
-
-
-
-
-
-
-# Mimics the MVAE structure using analytical f(z,phi) instead of a neural network
+@ dataclass
 class ToyMVAEProposer(UpdateProposer):
-  def __init__(self, beta=1.0):
-    self.beta = beta
+
 
   def propose(self, simulation, site=None):
 

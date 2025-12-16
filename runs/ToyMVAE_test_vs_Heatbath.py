@@ -26,15 +26,14 @@ hidden_dim = 2  # Example hidden dimension
 latent_dim = 1  # Example latent dimension
 
 
-beta = 1
 warmCycles=10000
 
 # Define proposers and observers in a list
 proposers = [
-    ("ToyMVAE", ToyMVAEProposer(beta, shuffle=False)),
-    ("Heatbath1", HeatbathProposer(beta, shuffle=False)),
-    ("Heatbath2", HeatbathProposer(beta, shuffle=False)),
-    ("Heatbath3", HeatbathProposer(beta, shuffle=False)),
+    ("ToyMVAE", ToyMVAEProposer( shuffle=False)),
+    ("Heatbath1", HeatbathProposer(shuffle=False)),
+    ("Heatbath2", HeatbathProposer(shuffle=False)),
+    ("Heatbath3", HeatbathProposer(shuffle=False)),
 ]
 
 # Create observers
@@ -42,7 +41,7 @@ observers = [Observer(observableFuncName="phiBar", historyLimit=100000) for _ in
 
 # Create simulations
 simulations = [
-    Simulation(beta, my_lattice, my_action, proposer, observer, warmCycles)
+    Simulation( my_lattice, my_action, proposer, observer, warmCycles)
     for (_, proposer), observer in zip(proposers, observers)
 ]
 

@@ -12,10 +12,9 @@ latdims = (8,8)
 lat = SquareND(latdims)
 action = Action(m=1.0)
 
-updateProposer = MetropolisProposer(dMax=1.0, beta=1.0)
+updateProposer = MetropolisProposer(dMax=1.0)
 
 sim = Simulation(
-    beta=1.0,
     lattice=lat,
     action=action,
     updateProposer=updateProposer,

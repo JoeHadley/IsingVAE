@@ -95,7 +95,6 @@ elif proposerType == "MH":
 
 
 sim = Simulation(
-  beta=1.0,
   lattice=lattice,
   action=action,
   updateProposer=proposer,

@@ -19,7 +19,7 @@ distribution = "uniform"  # Options: "uniform", "gaussian"
 
 myUpdateProposer = MetropolisProposer(distribution=distribution)
 myObserver = Observer("phiBar")
-mySimulation = Simulation(1.0, myLattice, myAction, myUpdateProposer, myObserver)
+mySimulation = Simulation( myLattice, myAction, myUpdateProposer, myObserver)
 
 mySimulation.updateCycles(1000)
 

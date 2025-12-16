@@ -8,11 +8,10 @@ from Observer import Observer
 from VAEDefinition import VAE
 from ReaderWriter import ReaderWriter
 from statFunctions import jackknife_bins, integrated_autocorr_time
-#def __init__(self, beta, lattice,action,updateProposer,observer=None,warmCycles=0,shuffle_address_list=True, initConfig = None):
+
 @ dataclass
 class Simulation:
   
-  beta: float
   lattice: Lattice
   action: Action
   updateProposer: UpdateProposer
@@ -124,15 +123,4 @@ class Simulation:
 
 
 
-
-
-
-
-
-myAction = Action()
-myLattice = SquareND([4,4])
-myUpdater = MetropolisProposer()
-myObserver = Observer("phiBar")
-mySim = Simulation(beta=0.5, lattice=myLattice, action=myAction, updateProposer=myUpdater, observer=myObserver, warmCycles=10)
-mySim.updateCycles(100)
 

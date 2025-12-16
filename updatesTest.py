@@ -20,7 +20,7 @@ Lattice = SquareND(latdims)
 Action = Action()
 UpdateProposer = HeatbathProposer( )
 
-sim = Simulation(1.0,Lattice,Action,UpdateProposer,None)
+sim = Simulation(Lattice,Action,UpdateProposer,None)
 
 #sim.workingLattice = np.array([0,0,0,0,0,0,0,0,0])
 

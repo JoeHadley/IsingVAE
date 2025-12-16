@@ -25,7 +25,7 @@ distribution = "gaussian"  # Options: "uniform", "gaussian"
 
 myUpdateProposer = MetropolisProposer(distribution=distribution)
 myObserver = Observer("StructFactor",latdims=latdims)
-mySimulation = Simulation(1.0, myLattice, myAction, myUpdateProposer, myObserver)
+mySimulation = Simulation( myLattice, myAction, myUpdateProposer, myObserver)
 
 mySimulation.updateCycles(2000)
 

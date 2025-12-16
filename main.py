@@ -19,7 +19,6 @@ myAction = Action(m=1.0)
 myUpdateProposer=VAEProposer( lattice_dim=dim, window_size=2, latent_dim=1, double_input=False, batch_size=1, device='cpu', beta=1.0)
 
 my_simulation = Simulation(
-    beta=1.0,
     MyLattice=myLattice,
     MyAction=myAction,
     MyUpdateProposer=myUpdateProposer,
@@ -32,7 +31,6 @@ my_simulation.workingLattice = np.random.uniform(-1, 1, size=myLattice.Ntot)
 a = my_simulation.workingLattice.copy()
 
 my_simulation.showLattice()
-# Optional argument set to False to indicate we do not want to use learning
 
 # Learning, Double Input
 my_simulation.updateCycles(10,optional_arg=False)

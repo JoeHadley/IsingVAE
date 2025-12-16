@@ -13,7 +13,6 @@ class Action:
     def findAction(self,simulation,overrideWorkingLattice=None):
         lattice = simulation.lattice
         workingLattice = simulation.workingLattice if overrideWorkingLattice is None else overrideWorkingLattice
-        beta = simulation.beta
         dim = simulation.lattice.dim
         S = 0
         

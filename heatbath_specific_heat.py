@@ -33,7 +33,6 @@ upd2 = VAEProposer( lattice_dim=dim, window_size=2, latent_dim=1, double_input=F
 obs1 = Observer("action")
 obs2 = Observer("action")
 sim1 = Simulation(
-    beta=1.0,
     lattice=lat1,
     action=act1,
     updateProposer=upd1,
@@ -42,7 +41,6 @@ sim1 = Simulation(
     )
 
 sim2 = Simulation(
-    beta=1.0,
     lattice=lat2,
     action=act2,
     updateProposer=upd2,
