@@ -95,29 +95,6 @@ class VAEProposer(UpdateProposer):
 
 
 
-@ dataclass
-class HeatbathProposer(UpdateProposer):
-
-
-  def propose(self,simulation,site=None):
-  
-    m = simulation.action.m
-    dim = simulation.lattice.dim
-    A = 0.5*m**2 + dim
-    B= simulation.action.sumNeighbours(simulation, site )  # should be plain sum of neighbor phi
-
-    # Correct mean and stddev for conditional Gaussian:
-    mean = B / (2*A)
-    stddev = math.sqrt(1.0 / (2 * A))
-
-    # draw new value
-    new_value = r.gauss(mean, stddev)
-    new_lattice = simulation.workingLattice.copy()
-    new_lattice[site] = new_value
-    
-    acceptance_probability = 1.0
-
-    return new_lattice, acceptance_probability
 
 @ dataclass
 class HeatbathProposer(UpdateProposer):
