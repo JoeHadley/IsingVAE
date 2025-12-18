@@ -50,19 +50,19 @@ class Action:
             workingLattice = simulation.workingLattice
 
         # Sum the values of the neighbours of a given site
-        neighbSum = 0
+        neighbour_sum = 0
         for d in range(lattice.dim):
-            neighbSum += workingLattice[lattice.shift(site, d, 1)]
+            neighbour_sum += workingLattice[lattice.shift(site, d, 1)]
             if not forwardOnly:
-                neighbSum += workingLattice[lattice.shift(site, d,-1)]
-        return neighbSum
+                neighbour_sum += workingLattice[lattice.shift(site, d,-1)]
+        return neighbour_sum
 
-    def actionChange(self, simulation, address,d):
+    def actionChange(self, simulation, site,d):
         lattice = simulation.lattice
         workingLattice = simulation.workingLattice
         dim = lattice.dim
 
-        neighbours = lattice.getNeighbours(address)
+        neighbours = lattice.getNeighbours(site)
 
         
 
@@ -71,19 +71,21 @@ class Action:
             n = int(neighbours[j])
             neighbSum += workingLattice[n]
 
-        dS = d*( 2*workingLattice[address]*(dim+ self.m*self.m/2) - neighbSum  ) \
+        dS = d*( 2*workingLattice[site]*(dim+ self.m*self.m/2) - neighbSum  ) \
         + d*d*(dim + self.m*self.m/2 )
 
 
         dSl = self.l*( \
-        + d*np.power(workingLattice[address],3)/6  \
-        + d*d*np.power(workingLattice[address],2)/4 \
-        + d*d*d*workingLattice[address]/6 \
+        + d*np.power(workingLattice[site],3)/6  \
+        + d*d*np.power(workingLattice[site],2)/4 \
+        + d*d*d*workingLattice[site]/6 \
         + d*d*d*d/24 )
 
-        return dS +dSl
+        change_in_action = dS + dSl
+
+        return change_in_action
     
-    def actionChangeLong(self, simulation, address,d):
+    def actionChangeLong(self, simulation, site,d):
         lattice = simulation.lattice
         workingLattice = simulation.workingLattice
 
@@ -93,7 +95,7 @@ class Action:
 
 
         trial = workingLattice.copy()
-        trial[address] += d
+        trial[site] += d
         NewAction = self.findAction(simulation,overrideWorkingLattice=trial )  # Action value after the change
         return NewAction - OldAction
     
