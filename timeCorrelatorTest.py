@@ -77,7 +77,37 @@ def twoPointTimeCorr(simulation, configNumber, interconfigCycles):
 
   return GCArray, GCErrors
 
+def twoPointTimeCorr2(simulation, configNumber, interconfigCycles):
 
+  timesteps, spacesteps = simulation.lattice.latdims
+        
+  GCMatrix = np.zeros((timesteps+1,configNumber))
+
+  for i in range(configNumber):
+    #print(i)
+    sim.updateCycles(interconfigCycles)
+
+    for tau in range(timesteps+1):
+      corr = 0.0
+
+      for t in range(timesteps): # Here I don't replace the +1
+        for x in range(spacesteps):
+          n1 = t * spacesteps + x
+          n2 = ((t + tau) % timesteps) * spacesteps + x
+          corr += simulation.workingLattice[n1] * simulation.workingLattice[n2]
+
+                
+
+      corr /= (spacesteps * spacesteps * timesteps)
+      GCMatrix[tau,i] += corr
+
+    print("Done config ",i, "/",configNumber)
+
+  # Average over configurations
+  GCArray = np.mean(GCMatrix, axis=1)
+  GCErrors = np.std(GCMatrix, axis=1)/np.sqrt(configNumber-1)
+
+  return GCArray, GCErrors
 
 a = 2
 exp1 = 2
@@ -89,7 +119,7 @@ interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
 
 #(2,2),(4,4),(5,5),(8,8),(10,10),(12,12),(5,10),(14,8)
-pairs = [(3,3)]
+pairs = [(6,6)]
 for pair in pairs:
   latdims = np.array(pair)
   T = latdims[0]
@@ -110,7 +140,7 @@ for pair in pairs:
       if proposerType == "HB":
         proposer = HeatbathProposer()
       elif proposerType == "MH":
-        proposer = MetropolisProposer(dMax=1.0,distribution='gaussian')
+        proposer = MetropolisProposer(dMax=1.0,distribution='uniform')
 
 
       sim = Simulation(
@@ -127,7 +157,7 @@ for pair in pairs:
       #    sim.updateCycles(interconfigCycles)
       #    sim.ReaderWriter.writeConfig(sim,filename= "TestingData.bin")
 
-      GCArray, GCErrors = twoPointTimeCorr(sim,correlatorConfigs,interconfigCycles)
+      GCArray, GCErrors = twoPointTimeCorr2(sim,correlatorConfigs,interconfigCycles)
 
 
       xAxis = np.arange(latdims[0]+1)
@@ -164,9 +194,9 @@ for pair in pairs:
 
 
       saveString = proposerType+"uniform" + str(T)+"x"+str(L)+",m="+str(m)+",a="+str(exp1)+str(exp2)+str(exp3)
+      plt.savefig("figures/"+saveString+".png")
+      np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
+      
 
-      #np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
-      #plt.savefig("figures/"+saveString+".png")
-
-      plt.show()
+      #plt.show()
       #plt.close()
