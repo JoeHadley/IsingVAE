@@ -119,7 +119,36 @@ class HeatbathProposer(UpdateProposer):
 
     return new_lattice, acceptance_probability
 
+@ dataclass
+class HeatbathProposer(UpdateProposer):
 
+
+  def propose(self,simulation,site=None):
+  
+    m = simulation.action.m
+    dim = simulation.lattice.dim
+    D = 0.5*m**2 + dim
+    N = simulation.action.sumNeighbours(simulation, site ) 
+
+    # Correct mean and stddev for conditional Gaussian:
+    mean = N / (2*D)
+    stddev = math.sqrt(1.0 / (2 * D))
+
+    # draw new value
+    new_value = r.gauss(mean, stddev)
+    old_value = simulation.workingLattice[site]
+    new_lattice = simulation.workingLattice.copy()
+    new_lattice[site] = new_value
+    
+    boltz_weight_old = math.exp(-simulation.action.findAction(simulation))
+    boltz_weight_new = math.exp(-simulation.action.findAction(simulation, overrideWorkingLattice=new_lattice))
+
+    transition_prob_forward = (1 / (stddev * math.sqrt(2 * math.pi))) * math.exp(-0.5 * ((new_value - mean) / stddev) ** 2)
+    transition_prob_backward = (1 / (stddev * math.sqrt(2 * math.pi))) * math.exp(-0.5 * ((old_value - mean) / stddev) ** 2)
+
+    acceptance_probability =  min(1.0, (boltz_weight_new * transition_prob_backward) / (boltz_weight_old * transition_prob_forward))
+    print("Acceptance Probability (Heatbath): ", (boltz_weight_new * transition_prob_backward) / (boltz_weight_old * transition_prob_forward))
+    return new_lattice, acceptance_probability
 
 
 @ dataclass

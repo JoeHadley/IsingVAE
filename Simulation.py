@@ -76,6 +76,8 @@ class Simulation:
 
     roll = np.random.uniform(0,1)
 
+    
+
 
     #print("Acceptance Probability: ", acceptance_probability)
 
