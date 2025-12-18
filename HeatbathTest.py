@@ -10,7 +10,7 @@ from Lattice import *
 from Observer import *
 
 
-myUpdateProposer = MetropolisProposer(distribution="uniform")
+myUpdateProposer = VAEProposer(input_dim=4, latent_dim=2, double_input=False, learning=False, device='cpu', VAEbeta=1.0)
 myLattice = SquareND([4,4])
 myAction = Action(m=1.0,l=0.0)
 mySimulation = Simulation(lattice=myLattice, action=myAction, updateProposer=myUpdateProposer, warmCycles=0)
@@ -33,5 +33,5 @@ plt.xlabel('Update')
 plt.ylabel('Acceptance Probability')
 plt.ylim(-0.20, 1.05)
 
-plt.title('Heatbath Acceptance Rate History')
+plt.title('Pareto Metropolis Acceptance Rate History')
 plt.show()
