@@ -20,8 +20,18 @@ print(mySimulation.acceptanceRateHistory[:mySimulation.acceptanceRateHistoryCoun
 
 # plot acceptance rate history
 import matplotlib.pyplot as plt
-plt.plot(mySimulation.acceptanceRateHistory[:mySimulation.acceptanceRateHistoryCount])
+
+data = mySimulation.acceptanceRateHistory[:mySimulation.acceptanceRateHistoryCount]
+print(data.min(), data.max())
+
+print(mySimulation.acceptedCount/mySimulation.acceptanceRateHistoryCount)
+
+
+plt.plot(data)
+plt.axhline(y=0.0, linestyle=':', linewidth=1)
 plt.xlabel('Update')
-plt.ylabel('Acceptance Rate')
-plt.title('Acceptance Rate History')
+plt.ylabel('Acceptance Probability')
+plt.ylim(-0.20, 1.05)
+
+plt.title('Heatbath Acceptance Rate History')
 plt.show()

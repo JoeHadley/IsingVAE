@@ -24,7 +24,7 @@ class Simulation:
   def __post_init__(self):
     # Prepare array for acceptance rates
     self.acceptanceRateHistoryLimit = 1000000
-    self.acceptanceRateHistory = np.zeros(self.acceptanceRateHistoryLimit)
+    self.acceptanceRateHistory = np.zeros(self.acceptanceRateHistoryLimit,dtype=float)
     self.acceptanceHistory = np.zeros(self.acceptanceRateHistoryLimit)
     self.acceptanceRateHistoryCount = 0
     self.acceptanceRateHistoryLimitReached = False
