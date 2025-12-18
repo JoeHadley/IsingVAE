@@ -10,7 +10,7 @@ from Lattice import *
 from Observer import *
 
 
-myUpdateProposer = HeatbathProposer()
+myUpdateProposer = MetropolisProposer(distribution="uniform")
 myLattice = SquareND([4,4])
 myAction = Action(m=1.0,l=0.0)
 mySimulation = Simulation(lattice=myLattice, action=myAction, updateProposer=myUpdateProposer, warmCycles=0)
