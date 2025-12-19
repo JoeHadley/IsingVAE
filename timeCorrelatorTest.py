@@ -111,15 +111,15 @@ def twoPointTimeCorr2(simulation, configNumber, interconfigCycles):
 
 a = 2
 exp1 = 2
-exp2 = 2
-exp3 = 2
+exp2 = 3.5
+exp3 = 1
 pregameWarmCycles = int(10**exp1)
 correlatorConfigs = int(10**exp2)#10**exp2)
 interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
 
 #(2,2),(4,4),(5,5),(8,8),(10,10),(12,12),(5,10),(14,8)
-pairs = [(6,6)]
+pairs = [(2,2)]
 for pair in pairs:
   latdims = np.array(pair)
   T = latdims[0]
@@ -157,7 +157,7 @@ for pair in pairs:
       #    sim.updateCycles(interconfigCycles)
       #    sim.ReaderWriter.writeConfig(sim,filename= "TestingData.bin")
 
-      GCArray, GCErrors = twoPointTimeCorr2(sim,correlatorConfigs,interconfigCycles)
+      GCArray, GCErrors = twoPointTimeCorr(sim,correlatorConfigs,interconfigCycles)
 
 
       xAxis = np.arange(latdims[0]+1)

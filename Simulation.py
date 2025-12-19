@@ -76,7 +76,7 @@ class Simulation:
 
     roll = np.random.uniform(0,1)
 
-    
+
 
 
     #print("Acceptance Probability: ", acceptance_probability)
@@ -117,8 +117,12 @@ class Simulation:
 
 
 
+  def printDiagnostics(self):
+    print("Acceptance Rate: ", self.acceptedCount/self.acceptanceRateHistoryCount)
+  
 
-
+  def saveLog(self, filename):
+  
   
   def saveConfig(self, filename):
     self.ReaderWriter.writeConfig(self, filename)
