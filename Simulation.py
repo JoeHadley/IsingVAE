@@ -122,7 +122,7 @@ class Simulation:
   
 
   def saveLog(self, filename):
-  
+    pass
   
   def saveConfig(self, filename):
     self.ReaderWriter.writeConfig(self, filename)
