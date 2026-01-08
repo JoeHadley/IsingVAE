@@ -6,6 +6,7 @@ from VAEDefinition import VAE
 import torch
 import base64
 from dataclasses import dataclass
+import windowing
 
 
 
@@ -63,21 +64,39 @@ class VAEProposer(UpdateProposer):
 
 
 
-  
-    #print(f"VAEProposer update at site {site}, learning={learning}")  # Debug statement
 
     input_phi, window_dims = simulation.lattice.createWindow(site,self.window_side_length)
 
-    print(f"Input window dims: {window_dims}")  # Debug statement    
+
+
 
     #make the input a tensor if it is not already
     if not isinstance(input_phi, torch.Tensor):
-        input_phi = torch.tensor(input_phi, dtype=torch.float32)
+      input_phi = torch.tensor(input_phi, dtype=torch.float32)
 
 
     output_phi, log_alpha = self.VAE.runLoop(input_phi,learning)  # Run the VAE to get the proposed new field value
 
-    new_lattice = simulation.lattice.insertWindow(simulation.workingLattice, output_phi.detach().numpy(), site, window_dims)
+
+    #print(f"Output phi shape: {output_phi.shape}")  # Debug statement
+    #print(f"Output phi: {output_phi}")  # Debug statement
+    #print(f"Window dims: {window_dims}, Window side length: {self.window_side_length}")  # Debug statement
+
+    
+    L = simulation.lattice.latdims[0]
+    largeLattice = simulation.workingLattice
+    l = self.window_side_length
+    smallLattice = output_phi.detach().numpy()
+    #site = site
+
+    #print(f"L: {L}, l: {l}, site: {site}")  # Debug statement
+    #print(f"Large Lattice shape: {largeLattice.shape}")  # Debug statement
+    #print(f"Small Lattice shape: {smallLattice.shape}")  # Debug statement
+    #print(f"Large Lattice: {largeLattice}")  # Debug statement
+    #print(f"Small Lattice: {smallLattice}")  # Debug statement
+
+    #new_lattice2 = simulation.lattice.insertWindow(simulation.workingLattice, output_phi.detach().numpy(), site, window_dims)
+    new_lattice = windowing.insertWindow(L, largeLattice, l, smallLattice, site)
 
     old_action = simulation.action.findAction(simulation)
     new_action = simulation.action.findAction(simulation,overrideWorkingLattice=new_lattice)
@@ -92,11 +111,7 @@ class VAEProposer(UpdateProposer):
     output_phi = output_phi.detach().detach().numpy()  # Convert output to numpy array
     acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
 
-    # Generate a random number to decide acceptance
-    roll = r.uniform(0, 1)
-    accepted = roll < acceptance_prob
-
-    return output_phi, acceptance_prob
+    return new_lattice, acceptance_prob
 
 
 

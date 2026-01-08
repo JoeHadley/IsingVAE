@@ -1,6 +1,7 @@
 import numpy as np
 import random as r
 import matplotlib.pyplot as plt
+import windowing
 import time
 import struct
 import base64
@@ -119,7 +120,7 @@ class SquareND(Lattice):
     dim = len(self.latdims)
     window_dims = np.array([window_size]*dim)
     ntot = window_size**dim
-    
+  
     # Get coordinates of the site
     coords = np.zeros(dim, dtype=int)
     s = site
@@ -149,33 +150,8 @@ class SquareND(Lattice):
     
     return out, window_dims
 
-  def insertWindow(self, large_lattice, window, site, window_dims):
-    # Same dimensions as wider lattice
-    dim = len(self.latdims)
-    ntot = np.prod(window_dims)
+
+
+
+
     
-    # Get coordinates of the site
-    coords = np.zeros(dim, dtype=int)
-    s = site
-    for d in range(dim):
-      coords[d] = (s // self.stride[d]) % self.latdims[d]
-      s = site%self.stride[d]
-
-    new_lattice = large_lattice.copy()
-
-    for idx in range(ntot): 
-
-      offset = idx
-      new_coords = coords.copy()
-      for d in reversed(range(dim)):
-        step = offset % window_dims[d]
-        
-        offset //= window_dims[d]
-        new_coords[d] = (coords[d] + step) % self.latdims[d]
-      
-      flat = 0
-      for d in range(dim):
-        flat += new_coords[d] * self.stride[d]
-      new_lattice[flat] = window[idx]
-      
-      return new_lattice

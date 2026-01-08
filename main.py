@@ -34,6 +34,8 @@ my_simulation = Simulation(
     )
 
 my_simulation.workingLattice = np.random.uniform(-1, 1, size=myLattice.Ntot)
+print("Initial Lattice:")
+print(my_simulation.workingLattice)
 
 a = my_simulation.workingLattice.copy()
 
@@ -44,5 +46,3 @@ my_simulation.updateCycles(10)
 b = my_simulation.workingLattice.copy()
 
 my_simulation.showLattice()
-
-print(np.reshape(a-b, (sideLength, sideLength)))

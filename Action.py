@@ -24,6 +24,8 @@ class Action:
 
             # Try use both sides 
             for d in range(dim):
+                #print(workingLattice)
+                #print(lattice.Ntot,n,d,lattice.shift(n,d,1),lattice.shift(n,d,-1))
                 neighbTotal += workingLattice[lattice.shift(n,d,1)]
                 neighbTotal += workingLattice[lattice.shift(n,d,-1)]
             
