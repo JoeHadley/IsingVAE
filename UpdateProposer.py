@@ -27,23 +27,26 @@ class UpdateProposer(ABC):
 @ dataclass
 class VAEProposer(UpdateProposer):
   
-  input_dim: int
+  lattice_dim: int
+  window_side_length: int
   latent_dim: int
-  double_input: bool
   learning: bool
+  double_input: bool
+  batch_size: int = 1
   device: str='cpu'
   VAEbeta: float = 1.0
 
   def __post_init__(self):
 
 
-    # Nearest power of 2 to input_dim/2
-    hidden_dim = int(2**(round(math.log2(self.input_dim/2))))
 
 
+    self.window_dim = self.window_side_length ** self.lattice_dim # Total number of sites in the window
+    # Nearest power of 2 to window_dim/2
+    self.hidden_dim = int(2**(round(math.log2(self.window_dim/2))))
 
 
-    self.VAE = VAE(self.input_dim, hidden_dim, self.latent_dim,self.double_input, self.device, self.VAEbeta, lr=1e-3)  # Example parameters
+    self.VAE = VAE(self.window_dim, self.hidden_dim, self.latent_dim, self.double_input, self.device, self.VAEbeta, lr=1e-3)  # Example parameters
     
   def setLearning(self, learning):
     self.learning = learning
@@ -63,7 +66,9 @@ class VAEProposer(UpdateProposer):
   
     #print(f"VAEProposer update at site {site}, learning={learning}")  # Debug statement
 
-    input_phi, window_dims = simulation.lattice.createWindow(site,self.input_dim)
+    input_phi, window_dims = simulation.lattice.createWindow(site,self.window_side_length)
+
+    print(f"Input window dims: {window_dims}")  # Debug statement    
 
     #make the input a tensor if it is not already
     if not isinstance(input_phi, torch.Tensor):

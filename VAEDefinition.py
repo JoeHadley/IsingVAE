@@ -13,11 +13,11 @@ from torchvision.utils import save_image, make_grid
 
 
 class VAE(nn.Module):
-    def __init__(self, input_dim, hidden_dim, latent_dim, double_input = False, device='cpu',beta=1.0,lr=1e-3):
+    def __init__(self, window_dim, hidden_dim, latent_dim, double_input = False, device='cpu',beta=1.0,lr=1e-3):
         super(VAE, self).__init__()
         self.device = device   
         self.beta = beta
-        self.input_dim = input_dim
+        self.window_dim = window_dim
         self.hidden_dim = hidden_dim
         self.latent_dim = latent_dim
         self.double_input = double_input
@@ -27,7 +27,7 @@ class VAE(nn.Module):
 
         # Encoder
         self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden_dim),
+            nn.Linear(window_dim, hidden_dim),
             nn.LeakyReLU(0.2),
             nn.Linear(hidden_dim, latent_dim),
             nn.LeakyReLU(0.2)
@@ -44,15 +44,15 @@ class VAE(nn.Module):
         if self.double_input:
 
             self.decoder = nn.Sequential(
-                nn.Linear(latent_dim + input_dim, hidden_dim),
+                nn.Linear(latent_dim + window_dim, hidden_dim),
                 nn.LeakyReLU(0.2),
-                nn.Linear(hidden_dim, input_dim)
+                nn.Linear(hidden_dim, window_dim)
             )
         else:
             self.decoder = nn.Sequential(
                 nn.Linear(latent_dim, hidden_dim),
                 nn.LeakyReLU(0.2),
-                nn.Linear(hidden_dim, input_dim)
+                nn.Linear(hidden_dim, window_dim)
             )
         # Output sigmoid removed
 
@@ -87,7 +87,7 @@ class VAE(nn.Module):
         """
         Computes log q(z | phi), assuming q is a diagonal Gaussian.
         z: Tensor of shape (latent_dim,) or (batch_size, latent_dim)
-        phi: input to encoder (same shape as input_dim)
+        phi: input to encoder (same shape as window_dim)
 
         Returns:
             log_prob: log probability of z under q(z|phi)
@@ -264,10 +264,10 @@ class VAE(nn.Module):
 
         return phi2, log_alpha
 
-myVAE = VAE(input_dim=3, hidden_dim=2, latent_dim=1, device='cpu', beta=1.0)
+#myVAE = VAE(window_dim=3, hidden_dim=2, latent_dim=1, device='cpu', beta=1.0)
 # Example usage
 
 # Assuming you have some input tensor `phi`
-phi = torch.randn(3)  # Example input tensor
-myVAE.runLoop(phi, learning=False)
+#phi = torch.randn(3)  # Example input tensor
+#myVAE.runLoop(phi, learning=False)
 
