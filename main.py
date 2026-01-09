@@ -34,14 +34,17 @@ my_simulation = Simulation(
     )
 
 my_simulation.workingLattice = np.random.uniform(-1, 1, size=myLattice.Ntot)
-print("Initial Lattice:")
-print(my_simulation.workingLattice)
 
 a = my_simulation.workingLattice.copy()
 
 my_simulation.showLattice()
 
 # Learning, Double Input
-my_simulation.updateCycles(10)
+my_simulation.updateCycles(1000)
 b = my_simulation.workingLattice.copy()
 
+accepted = np.sum(my_simulation.acceptanceHistory[:my_simulation.acceptanceRateHistoryCount])
+total = my_simulation.acceptanceRateHistoryCount
+acceptance_rate = accepted / total if total > 0 else 0
+print(f"Acceptance Rate after learning: {acceptance_rate:.4f}")
+print(f"Accepted {accepted} out of {total} proposals.")

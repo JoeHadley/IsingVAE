@@ -71,6 +71,13 @@ class Simulation:
     if not warmingFlag and self.observer is not None:
       self.observer.recordObservable(self)
 
+
+
+
+
+
+
+
   def update(self,site):
     new_lattice,acceptance_probability = self.updateProposer.propose(self,site)
 

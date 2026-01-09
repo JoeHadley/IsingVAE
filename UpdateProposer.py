@@ -36,6 +36,7 @@ class VAEProposer(UpdateProposer):
   batch_size: int = 1
   device: str='cpu'
   VAEbeta: float = 1.0
+  debug: bool = False
 
   def __post_init__(self):
 
@@ -52,18 +53,13 @@ class VAEProposer(UpdateProposer):
   def setLearning(self, learning):
     self.learning = learning
 
-  def updateCycle(self, simulation,site=None):
-
-
-    for i in range(self.batch_size):
-      n = r.choice(self.addressList)
-      self.update(simulation, site=n,learning=self.learning)
-
 
   def propose(self, simulation, site,learning=False):
 
 
+    old_lattice = simulation.workingLattice
 
+    
 
     input_phi, window_dims = simulation.lattice.createWindow(site,self.window_side_length)
 
@@ -78,39 +74,35 @@ class VAEProposer(UpdateProposer):
     output_phi, log_alpha = self.VAE.runLoop(input_phi,learning)  # Run the VAE to get the proposed new field value
 
 
-    #print(f"Output phi shape: {output_phi.shape}")  # Debug statement
-    #print(f"Output phi: {output_phi}")  # Debug statement
-    #print(f"Window dims: {window_dims}, Window side length: {self.window_side_length}")  # Debug statement
-
-    
     L = simulation.lattice.latdims[0]
     largeLattice = simulation.workingLattice
     l = self.window_side_length
     smallLattice = output_phi.detach().numpy()
-    #site = site
 
-    #print(f"L: {L}, l: {l}, site: {site}")  # Debug statement
-    #print(f"Large Lattice shape: {largeLattice.shape}")  # Debug statement
-    #print(f"Small Lattice shape: {smallLattice.shape}")  # Debug statement
-    #print(f"Large Lattice: {largeLattice}")  # Debug statement
-    #print(f"Small Lattice: {smallLattice}")  # Debug statement
-
-    #new_lattice2 = simulation.lattice.insertWindow(simulation.workingLattice, output_phi.detach().numpy(), site, window_dims)
     new_lattice = windowing.insertWindow(L, largeLattice, l, smallLattice, site)
 
     old_action = simulation.action.findAction(simulation)
     new_action = simulation.action.findAction(simulation,overrideWorkingLattice=new_lattice)
-    dS = new_action - old_action
-    log_alpha += -  dS
+    
+    
+    dS =  old_action - new_action
+    #log_alpha += -  dS
     
 
-    acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
+
+    acceptance_prob1 = torch.exp(log_alpha + dS).item()  # Convert log_alpha to a scalar acceptance probability
+
+    acceptance_prob2 = torch.exp(log_alpha).item() * np.exp( dS)
+    
+    if self.debug:
+      print(f"Old lattice: {old_lattice}, New lattice: {new_lattice}")  # Debug statement
+      print(f"old action: {old_action},new action: {new_action}, log_alpha: {log_alpha.item()}, acceptance_prob1: {acceptance_prob1}, acceptance_prob2: {acceptance_prob2}")  # Debug statement
 
     #acceptance_prob = self.VAE.compute_acceptance_probability(input_phi, output_phi)  # Compute acceptance probability
 
     output_phi = output_phi.detach().detach().numpy()  # Convert output to numpy array
-    acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
-
+    #acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
+    acceptance_prob = acceptance_prob1
     return new_lattice, acceptance_prob
 
 

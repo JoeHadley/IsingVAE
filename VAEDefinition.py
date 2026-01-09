@@ -182,7 +182,7 @@ class VAE(nn.Module):
         return torch.exp(exp_term)
     
 
-    def compute_log_alpha(self, input_phi, output_phi, zF, zB):
+    def compute_log_alpha(self, input_phi, output_phi, zF, zB, mean, logvar, back_mean, back_logvar):
       """
       Compute the log acceptance ratio for the proposed update.
       :param input_phi: Current field value
@@ -194,26 +194,29 @@ class VAE(nn.Module):
       log_q_zB = self.log_prob_q(zB, output_phi)
       # Jacobian magnitude (can use norm of df/dz or autodiff)
 
-
-    
-
-
       log_det_jF = torch.log(self.compute_jacobian_term(zF))
       log_det_jB = torch.log(self.compute_jacobian_term(zB))
-      #TODO verify correctness of log det terms with double input
 
 
 
       # Compute exponential factors
-      log_zSumF = torch.log(self.compute_exponential_term(zF, self.mean, self.logvar))
-      log_zSumB = torch.log(self.compute_exponential_term(zB, self.back_mean, self.back_logvar))
+      log_zSumF = torch.log(self.compute_exponential_term(zF, mean, logvar))
+      log_zSumB = torch.log(self.compute_exponential_term(zB, back_mean, back_logvar))
 
       # Compute Sigma ratio factors
-      Sigma_ratioF = 0.5*torch.log(torch.sum(torch.exp(self.logvar)))
-      Sigma_ratioB = 0.5*torch.log(torch.sum(torch.exp(self.back_logvar)))
+      #Sigma_ratioF = 0.5*torch.log(torch.sum(torch.exp(logvar)))
+      #Sigma_ratioB = 0.5*torch.log(torch.sum(torch.exp(back_logvar)))
+
+        # logvar is a tensor of log variances. I want the norm of them
+        # Variance means sigma^2, so exp(logvar) gives variance
+
+      Sigma_ratioOld = 0.5 * torch.sum(logvar)
+      Sigma_ratioNew = 0.5 * torch.sum(back_logvar)
+
+
 
       # Compute log of acceptance ratio (up to target densities)
-      log_alpha = (- log_det_jF + log_det_jB + log_zSumB - log_zSumF + Sigma_ratioB - Sigma_ratioF
+      log_alpha = (- log_det_jF + log_det_jB + log_zSumB - log_zSumF + Sigma_ratioNew - Sigma_ratioOld
       )
       return log_alpha
 
@@ -233,8 +236,8 @@ class VAE(nn.Module):
         phi2 = self.decode(zF, phi)
 
         back_mean, back_logvar  = self.encode(phi2)
-        self.back_mean=back_mean
-        self.back_logvar=back_logvar
+        #self.back_mean=back_mean
+        #self.back_logvar=back_logvar
         zB = self.reparameterization(back_mean, back_logvar)
 
         phi3 = self.decode(zB, phi2)
@@ -242,7 +245,7 @@ class VAE(nn.Module):
 
 
 
-        log_alpha = self.compute_log_alpha( phi, phi2, zF, zB)
+        log_alpha = self.compute_log_alpha( phi, phi2, zF, zB, mean, logvar, back_mean, back_logvar)
 
         # acceptance Loss (maximize acceptance)
         acc_loss = log_alpha.clamp(max=0)

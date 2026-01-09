@@ -1,26 +1,34 @@
 import numpy as np
 
-def insertWindow(L, largeLattice, l, smallLattice, site):
-  dim = 2 # Assuming 2D and square for this example
-  smallList = np.arange(0, l**dim)
+def insertWindow(L, largeLattice, l, smallLattice, site,dim=2):
+  resultLattice = largeLattice.copy()
+  if dim == 2:
+
+    smallList = np.arange(0, l**dim)
 
 
-  siteRow = site // L
-  siteCol = site %  L
-  siteCoord = np.array([siteRow, siteCol], dtype=int)
+    siteRow = site // L
+    siteCol = site %  L
+    siteCoord = np.array([siteRow, siteCol], dtype=int)
 
-  for i in smallList:
+    for i in smallList:
 
-    row = i // l
-    col = i %  l
-    smallCoord = np.array([row, col], dtype=int)
-    newCoord = (smallCoord + siteCoord) % L
-    
-    newIndex = newCoord[0] * L + newCoord[1]
+      row = i // l
+      col = i %  l
+      smallCoord = np.array([row, col], dtype=int)
+      newCoord = (smallCoord + siteCoord) % L
+      
+      newIndex = newCoord[0] * L + newCoord[1]
 
-    largeLattice[newIndex] = smallLattice[i]
+      resultLattice[newIndex] = smallLattice[i]
   
-  return largeLattice
+  elif dim == 1:
+    for i in range(l):
+      newIndex = (site + i) % L
+      resultLattice[newIndex] = smallLattice[i]
+
+
+  return resultLattice
 
 def insertWindow2(self, large_lattice, window, site, window_dims):
   # Same dimensions as wider lattice
@@ -56,3 +64,5 @@ def insertWindow2(self, large_lattice, window, site, window_dims):
     new_lattice[flat] = window[idx]
     
     return new_lattice
+  
+
