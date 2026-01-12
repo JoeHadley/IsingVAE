@@ -81,7 +81,7 @@ class VAEProposer(UpdateProposer):
 
     new_lattice = windowing.insertWindow(L, largeLattice, l, smallLattice, site)
 
-    old_action = simulation.action.findAction(simulation)
+    old_action = simulation.action.findAction(simulation,overrideWorkingLattice=old_lattice)
     new_action = simulation.action.findAction(simulation,overrideWorkingLattice=new_lattice)
     
     

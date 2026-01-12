@@ -163,23 +163,59 @@ class VAE(nn.Module):
         for i in range(output.shape[0]):
             grad_i = torch.autograd.grad(output[i], z, retain_graph=True, create_graph=True)[0]
             jacobian.append(grad_i)
-            
-        jacobian = torch.stack(jacobian, dim=0)  # shape: (3, 2)
+        jacobian = torch.stack(jacobian, dim=0) # shape: (3, 2)
         return jacobian
 
-    def compute_jacobian_term(self, input_z):
+
+    def compute_jacobian_term(self, input_z, min_singular=1e-2):
+        """
+        Numerically safe Jacobian volume term for demonstration purposes.
+        Guarantees no NaNs or -inf, even if decoder is untrained.
+
+        :param input_z: latent input z
+        :param min_singular: minimum singular value to avoid log(0)
+        :return: log(sqrt(det(J^T J))) ≈ sum(log(sigma_i))
+        """
+        # Compute the decoder Jacobian
+        J = self.compute_decoder_jacobian(input_z)  # shape (m, n)
+
+        # Compute singular values
+        _, S, _ = torch.linalg.svd(J, full_matrices=False)
+
+        # Clamp singular values to a reasonable minimum
+        S_clamped = torch.clamp(S, min=min_singular)
+
+        # Log of product of singular values = log sqrt(det(J^T J))
+        log_volume = torch.sum(torch.log(S_clamped))
+
+        return log_volume
+
+
+
+    def compute_jacobian_term3(self, input_z,eps = 1e-4):
+        jacobian = self.compute_decoder_jacobian(input_z)
+        _, S, _ = torch.linalg.svd(jacobian, full_matrices=False)
+        S = torch.clamp(S, min=eps)
+        return torch.sum(torch.log(S))
+
+
+    def compute_jacobian_term2(self, input_z,eps = 1e-4):
         jacobian = self.compute_decoder_jacobian(input_z)
         JTJ = jacobian.T @ jacobian  # Compute Jacobian transpose @ Jacobian
-        detTerm = torch.sqrt(torch.linalg.det(JTJ))
-        return detTerm
+
+        # Regularization for numerical stability        
+        JTJ = JTJ + eps * torch.eye(JTJ.shape[0], device=JTJ.device)
+
+        sign, logdet = torch.linalg.slogdet(JTJ)
+
+        return 0.5 * logdet  # Since we want sqrt of determinant
 
 
-    def compute_exponential_term(self, input_z, mean, logvar):
+    def compute_log_exp_term(self, input_z, mean, logvar):
         # Want sum of squares of input_z weighted by variance
-        var = torch.exp(logvar)              # variance
-        diff = input_z - mean                # z - mean
-        exp_term = 0.5 * torch.sum(diff**2 / var)
-        return torch.exp(exp_term)
+        inv_var = torch.exp(-logvar)
+        diff = input_z - mean
+        return -0.5 * torch.sum(diff**2 * inv_var)
     
 
     def compute_log_alpha(self, input_phi, output_phi, zF, zB, mean, logvar, back_mean, back_logvar):
@@ -197,27 +233,24 @@ class VAE(nn.Module):
       log_det_jF = torch.log(self.compute_jacobian_term(zF))
       log_det_jB = torch.log(self.compute_jacobian_term(zB))
 
-
+      # Compute Sigma ratio factors
+      sigma_ratioOld = 0.5 * torch.sum(logvar)
+      sigma_ratioNew = 0.5 * torch.sum(back_logvar)
 
       # Compute exponential factors
-      log_zSumF = torch.log(self.compute_exponential_term(zF, mean, logvar))
-      log_zSumB = torch.log(self.compute_exponential_term(zB, back_mean, back_logvar))
+      log_expF = self.compute_log_exp_term(zF, mean, logvar)
+      log_expB = self.compute_log_exp_term(zB, back_mean, back_logvar)
 
-      # Compute Sigma ratio factors
-      #Sigma_ratioF = 0.5*torch.log(torch.sum(torch.exp(logvar)))
-      #Sigma_ratioB = 0.5*torch.log(torch.sum(torch.exp(back_logvar)))
+      log_forward  = -sigma_ratioOld + log_expF - log_det_jF
+      log_backward = -sigma_ratioNew + log_expB - log_det_jB
 
-        # logvar is a tensor of log variances. I want the norm of them
-        # Variance means sigma^2, so exp(logvar) gives variance
-
-      Sigma_ratioOld = 0.5 * torch.sum(logvar)
-      Sigma_ratioNew = 0.5 * torch.sum(back_logvar)
-
-
+      print("det term", log_det_jF.item(), log_det_jB.item())
+      print("exp term", log_expF.item(), log_expB.item())
+      print("sigma term", sigma_ratioOld.item(), sigma_ratioNew.item())
 
       # Compute log of acceptance ratio (up to target densities)
-      log_alpha = (- log_det_jF + log_det_jB + log_zSumB - log_zSumF + Sigma_ratioNew - Sigma_ratioOld
-      )
+      #log_alpha = (- log_det_jF + log_det_jB - log_expB + log_expF + sigma_ratioNew - sigma_ratioOld)
+      log_alpha = log_forward - log_backward
       return log_alpha
 
   
@@ -230,19 +263,14 @@ class VAE(nn.Module):
         self.mean=mean
         self.logvar=logvar
 
-
-
         zF = self.reparameterization(mean, logvar)
         phi2 = self.decode(zF, phi)
 
         back_mean, back_logvar  = self.encode(phi2)
-        #self.back_mean=back_mean
-        #self.back_logvar=back_logvar
+        
+        self.back_mean=back_mean
+        self.back_logvar=back_logvar
         zB = self.reparameterization(back_mean, back_logvar)
-
-        phi3 = self.decode(zB, phi2)
-
-
 
 
         log_alpha = self.compute_log_alpha( phi, phi2, zF, zB, mean, logvar, back_mean, back_logvar)
@@ -257,9 +285,6 @@ class VAE(nn.Module):
 
         if learning:
             
-
-
-
             loss.backward()
             self.optimizer.step()
 
