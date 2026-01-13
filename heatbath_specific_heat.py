@@ -37,7 +37,7 @@ upd2 = VAEProposer( lattice_dim=dim,
                               batch_size=1,
                               device='cpu',
                               VAEbeta=1.0,
-                              debug=True)
+                              debug=False)
 obs1 = Observer("action")
 obs2 = Observer("action")
 sim1 = Simulation(

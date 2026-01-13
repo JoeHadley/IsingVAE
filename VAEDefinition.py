@@ -58,6 +58,8 @@ class VAE(nn.Module):
 
         self.optimizer = optim.Adam(self.parameters(), lr=lr)
 
+        self.print_decoder_parameters()
+
 
     def encode(self, x):
         x = self.encoder(x)
@@ -81,7 +83,15 @@ class VAE(nn.Module):
             decoder_input = z
         return self.decoder(decoder_input)
 
-  
+    def print_decoder_parameters(self):
+      for name, param in self.decoder.named_parameters():
+          if param.requires_grad:
+              print(name)
+              print("  mean:", param.data.mean().item())
+              print("  std :", param.data.std().item())
+              print("  min :", param.data.min().item())
+              print("  max :", param.data.max().item())
+
 
     def log_prob_q(self, z, phi):
         """
@@ -244,9 +254,9 @@ class VAE(nn.Module):
       log_forward  = -sigma_ratioOld + log_expF - log_det_jF
       log_backward = -sigma_ratioNew + log_expB - log_det_jB
 
-      print("det term", log_det_jF.item(), log_det_jB.item())
-      print("exp term", log_expF.item(), log_expB.item())
-      print("sigma term", sigma_ratioOld.item(), sigma_ratioNew.item())
+      #print("det term", log_det_jF.item(), log_det_jB.item())
+      #print("exp term", log_expF.item(), log_expB.item())
+      #print("sigma term", sigma_ratioOld.item(), sigma_ratioNew.item())
 
       # Compute log of acceptance ratio (up to target densities)
       #log_alpha = (- log_det_jF + log_det_jB - log_expB + log_expF + sigma_ratioNew - sigma_ratioOld)
