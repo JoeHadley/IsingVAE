@@ -22,7 +22,7 @@ def calculate_specific_heat(simulation):
     return specific_heat, heat_error
 
 dim = 2
-sideLength = 4
+sideLength = 5
 latdims = np.array([sideLength] * dim)
 lat1 = SquareND(latdims, shuffle=True)
 lat2 = SquareND(latdims, shuffle=True)
@@ -30,8 +30,8 @@ act1 = Action(m=1.0)
 act2 = Action(m=1.0)
 upd1 = MetropolisProposer()
 upd2 = VAEProposer( lattice_dim=dim,
-                              window_side_length=2,
-                              latent_dim=1,
+                              window_side_length=4,
+                              latent_dim=2,
                               double_input=True,
                               learning = False,
                               batch_size=1,
@@ -39,7 +39,7 @@ upd2 = VAEProposer( lattice_dim=dim,
                               VAEbeta=1.0,
                               debug=False)
 obs1 = Observer("action")
-obs2 = Observer("action")
+obs2 = Observer("sqrtJTJ")
 sim1 = Simulation(
     lattice=lat1,
     action=act1,
@@ -59,8 +59,8 @@ sim2 = Simulation(
 sim1.workingLattice = np.random.uniform(-1, 1, size=lat1.Ntot)
 sim2.workingLattice = np.random.uniform(-1, 1, size=lat2.Ntot)
 
-total_cycles = 100
-check_each = 10
+total_cycles = 10
+check_each = 1
 
 for i in range(total_cycles):
     if i % check_each == 0:
@@ -92,10 +92,30 @@ print(sim2.acceptanceHistory[:sim2.acceptanceRateHistoryCount].mean())
 
 #plot acceptance probability history
 import matplotlib.pyplot as plt
-plt.plot(sim2.acceptanceHistory[:sim2.acceptanceRateHistoryCount])
-plt.xlabel("Proposal Number")
-plt.ylabel("Acceptance (1) or Rejection (0)")
-plt.title("VAE Proposal Acceptance History")
-plt.savefig("vae_acceptance_history.png")
+
+# Histogram JTJ trace from Observer
+plt.hist(obs2.returnHistory(), bins=30, density=True)
+plt.xlabel("Trace of J^T J")
+plt.ylabel("Probability Density")
+plt.title("Histogram of Trace of J^T J from VAE Proposals")
+plt.savefig("vae_jtj_histogram.png")
+plt.clf()
 
 
+
+
+
+
+
+
+
+
+
+#plt.plot(sim2.acceptanceHistory[:sim2.acceptanceRateHistoryCount])
+#plt.xlabel("Proposal Number")
+#plt.ylabel("Acceptance (1) or Rejection (0)")
+#plt.title("VAE Proposal Acceptance History")
+#plt.savefig("vae_acceptance_history.png")
+
+
+print(upd2.VAE.hidden_dim)

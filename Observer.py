@@ -15,7 +15,8 @@ class Observer:
       "specificHeat":   (1,       lambda simulation: 0),  # Placeholder
       "empty":          (1,       lambda: 0),
       "Correlator":     (1,       lambda simulation: self.correlator(simulation)),
-      "StructFactor":   (latdims, lambda simulation: self.structureFactor(simulation))
+      "StructFactor":   (latdims, lambda simulation: self.structureFactor(simulation)),
+      "sqrtJTJ":            ( 1, lambda simulation: self.computeJTJ(simulation) )
       }
 
 
@@ -87,7 +88,10 @@ class Observer:
     S = np.abs(FTLattice)**2
     return S
 
-
+  def computeJTJ(self, simulation):
+    vae = simulation.updateProposer.VAE
+    trace_JTJ = vae.lastJacobianTermF.item()
+    return trace_JTJ 
 
   def recordObservable(self, simulation, value=None):
 

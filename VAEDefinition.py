@@ -13,7 +13,7 @@ from torchvision.utils import save_image, make_grid
 
 
 class VAE(nn.Module):
-  def __init__(self, window_dim, hidden_dim, latent_dim, double_input = False, device='cpu',beta=1.0,lr=1e-3):
+  def __init__(self, window_dim, hidden_dim, latent_dim, double_input = False, debug=False, device='cpu',beta=1.0,lr=1e-3):
     super(VAE, self).__init__()
     self.device = device   
     self.beta = beta
@@ -21,6 +21,7 @@ class VAE(nn.Module):
     self.hidden_dim = hidden_dim
     self.latent_dim = latent_dim
     self.double_input = double_input
+    self.debug = debug
       
 
       
@@ -28,9 +29,11 @@ class VAE(nn.Module):
     # Encoder
     self.encoder = nn.Sequential(
       nn.Linear(window_dim, hidden_dim),
-      nn.LeakyReLU(0.2),
+      #nn.LeakyReLU(0.2),
+      nn.Sigmoid(),
       nn.Linear(hidden_dim, latent_dim),
-      nn.LeakyReLU(0.2)
+      #nn.LeakyReLU(0.2)
+      nn.Sigmoid()
     )
       
 
@@ -45,13 +48,15 @@ class VAE(nn.Module):
 
       self.decoder = nn.Sequential(
         nn.Linear(latent_dim + window_dim, hidden_dim),
-        nn.LeakyReLU(0.2),
+        #nn.LeakyReLU(0.2),
+        nn.Sigmoid(),
         nn.Linear(hidden_dim, window_dim)
       )
     else:
       self.decoder = nn.Sequential(
         nn.Linear(latent_dim, hidden_dim),
-        nn.LeakyReLU(0.2),
+        #nn.LeakyReLU(0.2),
+        nn.Sigmoid(),
         nn.Linear(hidden_dim, window_dim)
       )
     # Output sigmoid removed
@@ -173,8 +178,20 @@ class VAE(nn.Module):
     for i in range(output.shape[0]):
       grad_i = torch.autograd.grad(output[i], z, retain_graph=True, create_graph=True)[0]
       jacobian.append(grad_i)
-    jacobian = torch.stack(jacobian, dim=0) # shape: (3, 2)
+    jacobian = torch.stack(jacobian, dim=0) # shape: (Window dimension, Latent dimension)
+
+    print("Jacobian:", jacobian)
     return jacobian
+
+  def compute_jacobian_term_simple(self, input_z,eps = 1e-4):
+    jacobian = self.compute_decoder_jacobian(input_z)
+    JTJ = jacobian.T @ jacobian  # Compute Jacobian transpose @ Jacobian
+
+
+    sign, logdet = torch.linalg.slogdet(JTJ) # Returns sign and log determinant
+
+    return 0.5 * logdet  # Since we want sqrt of determinant
+
 
 
   def compute_jacobian_term(self, input_z, min_singular=1e-2):
@@ -187,7 +204,7 @@ class VAE(nn.Module):
     :return: log(sqrt(det(J^T J))) ≈ sum(log(sigma_i))
     """
     # Compute the decoder Jacobian
-    J = self.compute_decoder_jacobian(input_z)  # shape (m, n)
+    J = self.compute_decoder_jacobian1(input_z)  # shape (m, n)
 
     # Compute singular values
     _, S, _ = torch.linalg.svd(J, full_matrices=False)
@@ -202,23 +219,14 @@ class VAE(nn.Module):
 
 
 
-  def compute_jacobian_term3(self, input_z,eps = 1e-4):
+  def compute_jacobian_term_complex(self, input_z,eps = 1e-4):
     jacobian = self.compute_decoder_jacobian(input_z)
     _, S, _ = torch.linalg.svd(jacobian, full_matrices=False)
     S = torch.clamp(S, min=eps)
     return torch.sum(torch.log(S))
 
 
-  def compute_jacobian_term2(self, input_z,eps = 1e-4):
-    jacobian = self.compute_decoder_jacobian(input_z)
-    JTJ = jacobian.T @ jacobian  # Compute Jacobian transpose @ Jacobian
 
-    # Regularization for numerical stability        
-    JTJ = JTJ + eps * torch.eye(JTJ.shape[0], device=JTJ.device)
-
-    sign, logdet = torch.linalg.slogdet(JTJ)
-
-    return 0.5 * logdet  # Since we want sqrt of determinant
 
 
   def compute_log_exp_term(self, input_z, mean, logvar):
@@ -240,8 +248,15 @@ class VAE(nn.Module):
     log_q_zB = self.log_prob_q(zB, output_phi)
     # Jacobian magnitude (can use norm of df/dz or autodiff)
 
-    log_det_jF = torch.log(self.compute_jacobian_term(zF))
-    log_det_jB = torch.log(self.compute_jacobian_term(zB))
+    log_det_jFs = self.compute_jacobian_term_simple(zF)
+    log_det_jBs = self.compute_jacobian_term_simple(zB)
+
+    log_det_jFc = self.compute_jacobian_term_complex(zF)
+    log_det_jBc = self.compute_jacobian_term_complex(zB)
+
+
+    self.lastJacobianTermF = torch.exp(log_det_jFs)
+    self.lastJacobianTermB = torch.exp(log_det_jBs)
 
     # Compute Sigma ratio factors
     sigma_ratioOld = 0.5 * torch.sum(logvar)
@@ -251,12 +266,14 @@ class VAE(nn.Module):
     log_expF = self.compute_log_exp_term(zF, mean, logvar)
     log_expB = self.compute_log_exp_term(zB, back_mean, back_logvar)
 
-    log_forward  = -sigma_ratioOld + log_expF - log_det_jF
-    log_backward = -sigma_ratioNew + log_expB - log_det_jB
+    log_forward  = -sigma_ratioOld + log_expF - log_det_jFs
+    log_backward = -sigma_ratioNew + log_expB - log_det_jBs
 
-    #print("det term", log_det_jF.item(), log_det_jB.item())
-    #print("exp term", log_expF.item(), log_expB.item())
-    #print("sigma term", sigma_ratioOld.item(), sigma_ratioNew.item())
+
+    if self.debug:
+      print("det term", log_det_jFs.item(), log_det_jBs.item(), log_det_jFc.item(), log_det_jBc.item())
+      print("exp term", log_expF.item(), log_expB.item())
+      print("sigma term", sigma_ratioOld.item(), sigma_ratioNew.item())
 
     # Compute log of acceptance ratio (up to target densities)
     #log_alpha = (- log_det_jF + log_det_jB - log_expB + log_expF + sigma_ratioNew - sigma_ratioOld)

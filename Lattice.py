@@ -114,8 +114,10 @@ class SquareND(Lattice):
     
     
 
-  def createWindow(self, site, window_size):
+  def createWindow(self, old_lattice, site, window_size):
       
+
+
     # Same dimensions as wider lattice
     dim = len(self.latdims)
     window_dims = np.array([window_size]*dim)
@@ -126,7 +128,7 @@ class SquareND(Lattice):
     s = site
     for d in range(dim):
       coords[d] = (s // self.stride[d]) % self.latdims[d]
-      s = site%self.stride[d]
+      s = s%self.stride[d]
 
     # Set up output
     out = np.zeros(ntot)
@@ -146,7 +148,7 @@ class SquareND(Lattice):
       flat = 0
       for d in range(dim):
         flat += new_coords[d] * self.stride[d]
-      out[idx] = self.lat[flat]
+      out[idx] = old_lattice[flat]
     
     return out, window_dims
 

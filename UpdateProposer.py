@@ -30,6 +30,7 @@ class VAEProposer(UpdateProposer):
   
   lattice_dim: int
   window_side_length: int
+
   latent_dim: int
   learning: bool
   double_input: bool
@@ -37,6 +38,7 @@ class VAEProposer(UpdateProposer):
   device: str='cpu'
   VAEbeta: float = 1.0
   debug: bool = False
+  hidden_dim: int = None
 
   def __post_init__(self):
 
@@ -45,10 +47,17 @@ class VAEProposer(UpdateProposer):
 
     self.window_dim = self.window_side_length ** self.lattice_dim # Total number of sites in the window
     # Nearest power of 2 to window_dim/2
-    self.hidden_dim = int(2**(round(math.log2(self.window_dim/2))))
 
+    if self.hidden_dim is not None:
+      self.hidden_dim = self.hidden_dim
+    elif self.window_dim == 1:
+      self.hidden_dim = 1
+    else:
+      self.hidden_dim = int(2**(round(math.log2(self.window_dim/2))))
 
-    self.VAE = VAE(self.window_dim, self.hidden_dim, self.latent_dim, self.double_input, self.device, self.VAEbeta, lr=1e-3)  # Example parameters
+    print(f"VAEProposer initialized with window_dim: {self.window_dim}, hidden_dim: {self.hidden_dim}")
+
+    self.VAE = VAE(self.window_dim, self.hidden_dim, self.latent_dim, self.double_input, self.debug, self.device, self.VAEbeta, lr=1e-3)  # Example parameters
     
   def setLearning(self, learning):
     self.learning = learning
@@ -57,11 +66,12 @@ class VAEProposer(UpdateProposer):
   def propose(self, simulation, site,learning=False):
 
 
-    old_lattice = simulation.workingLattice
+    old_lattice = simulation.workingLattice.copy()
 
     
 
-    input_phi, window_dims = simulation.lattice.createWindow(site,self.window_side_length)
+    input_phi, window_dims = simulation.lattice.createWindow(old_lattice,site,self.window_side_length)
+    
 
 
 
@@ -85,23 +95,21 @@ class VAEProposer(UpdateProposer):
     new_action = simulation.action.findAction(simulation,overrideWorkingLattice=new_lattice)
     
     
-    dS =  old_action - new_action
+    dS =  new_action - old_action
     #log_alpha += -  dS
     
 
 
-    acceptance_prob1 = torch.exp(log_alpha + dS).item()  # Convert log_alpha to a scalar acceptance probability
+    acceptance_prob1 = torch.exp(log_alpha -dS).item()  # Convert log_alpha to a scalar acceptance probability
 
-    acceptance_prob2 = torch.exp(log_alpha).item() * np.exp( dS)
+    acceptance_prob2 = torch.exp(log_alpha).item() * np.exp(-dS)
     
     if self.debug:
       print(f"Old lattice: {old_lattice}, New lattice: {new_lattice}")  # Debug statement
       print(f"old action: {old_action},new action: {new_action}, log_alpha: {log_alpha.item()}, acceptance_prob1: {acceptance_prob1}, acceptance_prob2: {acceptance_prob2}")  # Debug statement
 
-    #acceptance_prob = self.VAE.compute_acceptance_probability(input_phi, output_phi)  # Compute acceptance probability
 
-    output_phi = output_phi.detach().detach().numpy()  # Convert output to numpy array
-    #acceptance_prob = torch.exp(log_alpha).item()  # Convert log_alpha to a scalar acceptance probability
+
     acceptance_prob = acceptance_prob1
     return new_lattice, acceptance_prob
 
