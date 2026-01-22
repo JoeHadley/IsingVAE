@@ -291,7 +291,9 @@ class VAE(nn.Module):
     self.logvar=logvar
 
     zF = self.reparameterization(mean, logvar)
-    phi2 = self.decode(zF, phi)
+    output = self.decode(zF, phi)
+
+    phi2 = phi + output  # Residual connection
 
     back_mean, back_logvar  = self.encode(phi2)
     
