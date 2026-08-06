@@ -1,10 +1,10 @@
 import numpy as np
 from Lattice import Lattice, SquareND
-from UpdateProposer import *
+from UpdateProposer import MetropolisProposer
 
 from Action import Action
 from Observer import Observer
-from VAEDefinition import VAE
+#from VAEDefinition import VAE
 from ReaderWriter import ReaderWriter
 from statFunctions import jackknife_bins, integrated_autocorr_time
 from Simulation import Simulation
@@ -12,18 +12,12 @@ from Simulation import Simulation
 
 
 dim = 2
-sideLength = 3
+sideLength = 8
 latdims = np.array([sideLength] * dim)
 myLattice = SquareND(latdims, shuffle=True)
 myAction = Action(m=1.0)
-myUpdateProposer=VAEProposer( lattice_dim=dim,
-                              window_side_length=2,
-                              latent_dim=1,
-                              double_input=False,
-                              learning = False,
-                              batch_size=1,
-                              device='cpu',
-                              VAEbeta=1.0)
+
+myUpdateProposer=MetropolisProposer()
 
 my_simulation = Simulation(
     lattice=myLattice,
@@ -42,9 +36,3 @@ my_simulation.showLattice()
 # Learning, Double Input
 my_simulation.updateCycles(1000)
 b = my_simulation.workingLattice.copy()
-
-accepted = np.sum(my_simulation.acceptanceHistory[:my_simulation.acceptanceRateHistoryCount])
-total = my_simulation.acceptanceRateHistoryCount
-acceptance_rate = accepted / total if total > 0 else 0
-print(f"Acceptance Rate after learning: {acceptance_rate:.4f}")
-print(f"Accepted {accepted} out of {total} proposals.")

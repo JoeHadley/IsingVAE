@@ -110,16 +110,16 @@ def twoPointTimeCorr2(simulation, configNumber, interconfigCycles):
   return GCArray, GCErrors
 
 a = 2
-exp1 = 2
-exp2 = 3.5
-exp3 = 1
+exp1 = 4
+exp2 = 4
+exp3 = 4
 pregameWarmCycles = int(10**exp1)
 correlatorConfigs = int(10**exp2)#10**exp2)
 interconfigCycles = int(10**exp3) # Each cycle is T*L updates
 
 
 #(2,2),(4,4),(5,5),(8,8),(10,10),(12,12),(5,10),(14,8)
-pairs = [(2,2)]
+pairs = [(6,6)]
 for pair in pairs:
   latdims = np.array(pair)
   T = latdims[0]
@@ -196,7 +196,7 @@ for pair in pairs:
       saveString = proposerType+"uniform" + str(T)+"x"+str(L)+",m="+str(m)+",a="+str(exp1)+str(exp2)+str(exp3)
       plt.savefig("figures/"+saveString+".png")
       np.savetxt("figures/figureData/"+saveString+".txt",outputData,header="Tau, MC_G(tau), MC_Error, Analytic_G(tau)")
-      
+      print(saveString)
 
       #plt.show()
       #plt.close()
