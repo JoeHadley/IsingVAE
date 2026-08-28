@@ -16,6 +16,7 @@ class Simulation:
   action: Action
   updateProposer: UpdateProposer
   observer: Observer = None
+  readerWriter: ReaderWriter = None
 
   warmCycles: int = 0
   shuffle_address_list: bool = True
@@ -132,7 +133,7 @@ class Simulation:
     pass
   
   def saveConfig(self, filename):
-    self.ReaderWriter.writeConfig(self, filename)
+    self.readerWriter.writeConfig(self, filename)
 
 
 

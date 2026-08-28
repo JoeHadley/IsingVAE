@@ -59,7 +59,6 @@ class VAE(nn.Module):
         nn.Sigmoid(),
         nn.Linear(hidden_dim, window_dim)
       )
-    # Output sigmoid removed
 
     self.optimizer = optim.Adam(self.parameters(), lr=lr)
 

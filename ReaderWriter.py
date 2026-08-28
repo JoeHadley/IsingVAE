@@ -8,6 +8,7 @@ class ReaderWriter:
 
 
   def writeConfig(self, simulation, filename = "output.bin"):
+    print("writing")
     data = simulation.workingLattice
     #data.tofile(filename)
     
