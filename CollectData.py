@@ -29,6 +29,12 @@ my_simulation = Simulation(
     warmCycles=0
     )
 
+config_directory = "Configs/"
+filename = "8x8_configs.bin"
+filestring = config_directory + filename
+
 my_simulation.workingLattice = np.random.uniform(-1, 1, size=myLattice.Ntot)
 my_simulation.updateCycles(1000)
-my_simulation.saveConfig("Configs/test")
+for i in range(1000):
+  my_simulation.updateCycles(1000)
+  my_simulation.saveConfig(filestring)

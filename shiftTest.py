@@ -27,7 +27,7 @@ for site in range(lat.Ntot):
 lat.show()
 
 
-for jump in range(1,4):
+for jump in range(1,5):
 
     for direction in range(dim):
 
@@ -35,7 +35,7 @@ for jump in range(1,4):
         my_lattice = SquareND(latdims)
 
         site = 3
-        shifted_site = lat.shift(site, direction, jump)%lat.Ntot
+        shifted_site = lat.shift(site, direction,-1* jump)%lat.Ntot
 
      
         
